@@ -389,7 +389,7 @@ for i, (name, count, color, tag_bg) in enumerate(regions):
 # ═══════════════════════════════════════════════════════════════
 lead_stories = [
     {
-        "num": 1, "place": "ANTALYA, TURKEY", "tag": "ONGOING", "kicker": "COP31 CLIMATE SUMMIT",
+        "num": 1, "place": "ANTALYA, TURKEY", "tag": "CLIMATE", "kicker": "COP31 CLIMATE SUMMIT",
         "certainty": "REPORTED",  # NEW: certainty tag for kicker line
         "tag_color": EUROPE_BLUE, "tag_bg": TAG_BLUE,
         "headline": "COP31 final text lands at dawn after two days in overtime",
@@ -397,7 +397,7 @@ lead_stories = [
         "source": "(Reuters, BBC)", "stat": "~200 nations", "illustration": "climate",
     },
     {
-        "num": 2, "place": "MANAMA, BAHRAIN", "tag": "CLAIM", "kicker": "IRGC CLAIMS STRIKES",
+        "num": 2, "place": "MANAMA, BAHRAIN", "tag": "STRIKES", "kicker": "IRGC CLAIMS STRIKES",
         "certainty": "CLAIM",  # NEW: IRGC's own claim
         "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
         "headline": "IRGC claims missile and drone strikes on two US Patriot radars",
@@ -405,7 +405,7 @@ lead_stories = [
         "source": "(Al Jazeera)", "stat": "2 bases targeted", "illustration": "bahrain",
     },
     {
-        "num": 3, "place": "KYIV, UKRAINE", "tag": "REPORTED", "kicker": "OVERNIGHT BARRAGE",
+        "num": 3, "place": "KYIV, UKRAINE", "tag": "BARRAGE", "kicker": "OVERNIGHT BARRAGE",
         "certainty": "REPORTED",  # NEW: wire-reported
         "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
         "headline": "Russia launches 186 drones overnight; air defence downs 161 by 08:00",
@@ -517,7 +517,7 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
             draw.arc([x+wx, coast_y, x+wx+15, coast_y+8], 0, 180, fill=(0x15,0x20,0x30), width=1)
         # MANAMA label
         f_b = get_font("sans", 9, bold=True)
-        draw_text_on_layer(draw, cx, y+h-6, "MANAMA", f_b, (0xFF,0xC0,0xC0), anchor="mm")
+        draw_text_on_layer(draw, x+8, y+8, "MANAMA", f_b, (0xFF,0xC0,0xC0), anchor="lt")
   
     elif type_ == "kyiv":
         # Kyiv: night skyline with lit windows, searchlight beam, drones with trails
@@ -558,7 +558,7 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
             draw.ellipse([sx-10, sy-5, sx+10, sy+5], fill=(0x18,0x18,0x25))
         # KYIV label
         f_k = get_font("sans", 9, bold=True)
-        draw_text_on_layer(draw, cx, y+h-6, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
+        draw_text_on_layer(draw, x+8, y+8, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="lt")
 
 
 # ─── Draw continuous panorama on a SEPARATE layer, then clip to each panel ───
@@ -575,6 +575,9 @@ cont_draw = ImageDraw.Draw(cont_layer)
 draw_illustration_on_layer(cont_draw, "climate", 0, 0, panel_w, ill_h)
 draw_illustration_on_layer(cont_draw, "bahrain", panel_w, 0, panel_w, ill_h)
 draw_illustration_on_layer(cont_draw, "kyiv", 2*panel_w, 0, panel_w, ill_h)
+
+# Collect lead sources for repaint after mid cards
+lead_sources = []
 
 # Now draw each lead panel with CLIPPED illustration
 for i, story in enumerate(lead_stories):
@@ -672,6 +675,8 @@ for i, story in enumerate(lead_stories):
     # round 2's render); 1-line deck -> +90 (round 3's value, clean there).
     ty += max(deck_h, 16)
     draw_text(text_x, ty, story["source"], f_lead_source, MED_GREY)
+    # Collect for repaint after mid cards (fixes lead 3 clipping)
+    lead_sources.append((text_x, ty, story["source"]))
 
 # ════════════════════════════════════════════════════════════════
 # 6. THE DAY IN TWELVE - 2 rows of 6 cards (numbered 4-15) (y 543–783)
@@ -876,12 +881,6 @@ def draw_mid_illustration(type_, x, y, w, h):
         D.polygon([(cx-12, cy+2), (cx+12, cy+2), (cx+8, cy+10), (cx-8, cy+10)], fill=(0x40,0x28,0x10))
         # Mast
         D.line([cx, cy-2, cx, cy-14], fill=(0x30,0x20,0x10), width=2)
-        # Smoke
-        for i in range(5):
-            sx = cx + (i-2)*6
-            sy = cy - 16 - i*3
-            sr = 4 + i*2
-            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x20,0x20,0x25))
         # People in water
         for i in range(4):
             px = cx - 12 + i*8
@@ -1007,12 +1006,6 @@ def draw_mid_illustration(type_, x, y, w, h):
             fx = cx + (f-2)*5
             for layer, (fr, fg, fb) in enumerate([(0xFF,0x20,0x00), (0xFF,0x80,0x10), (0xFF,0xC0,0x20)]):
                 D.ellipse([fx-4+layer, cy-10-layer, fx+4-layer, cy-4+layer], fill=(fr, fg, fb))
-        # Smoke plumes
-        for i in range(6):
-            sx = cx + (i-2.5)*6
-            sy = cy - 16 - i*3
-            sr = 4 + i*2
-            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x15,0x15,0x20))
     elif type_ == "factory_strike":
         # Factory + flames + picket sign (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0x18,0x18,0x20))
@@ -1022,17 +1015,17 @@ def draw_mid_illustration(type_, x, y, w, h):
         for wx in [cx-12, cx-4, cx+4, cx+12]:
             for wy in [cy, cy+10]:
                 D.rectangle([wx-3, wy-3, wx+3, wy+3], fill=(0x20,0x20,0x25))
-        # Chimneys with flames
+        # Chimneys with flames - clamped so nothing above y+1 (cy-9 for h=20)
         for ch_x in [cx-10, cx+10]:
             D.rectangle([ch_x-3, cy-16, ch_x+3, cy-2], fill=(0x40,0x40,0x45))
-            # Flame
+            # Flame - tops at cy-11 (y+1), then down
             for f in range(3):
-                D.ellipse([ch_x-4+f, cy-18-f*2, ch_x+4-f, cy-12-f*2], fill=(0xFF,0x60,0x10))
-                D.ellipse([ch_x-3+f, cy-17-f*2, ch_x+3-f, cy-11-f*2], fill=(0xFF,0xA0,0x20))
-        # Picket sign
-        D.line([cx, cy-2, cx, cy-20], fill=WHITE, width=2)
-        D.rectangle([cx-10, cy-22, cx+10, cy-14], fill=RED, outline=WHITE)
-        draw_text(cx, cy-18, "STRIKE", get_font("sans", 6, bold=True), WHITE, anchor="mm")
+                D.ellipse([ch_x-4+f, cy-11-f*2, ch_x+4-f, cy-5-f*2], fill=(0xFF,0x60,0x10))
+                D.ellipse([ch_x-3+f, cy-10-f*2, ch_x+3-f, cy-4-f*2], fill=(0xFF,0xA0,0x20))
+        # Picket sign - clamped: rect cy-12..cy-6, pole cy-2..cy-10
+        D.line([cx, cy-2, cx, cy-10], fill=WHITE, width=2)
+        D.rectangle([cx-10, cy-12, cx+10, cy-6], fill=RED, outline=WHITE)
+        draw_text(cx, cy-9, "STRIKE", get_font("sans", 6, bold=True), WHITE, anchor="mm")
 
 
 card_w = 160
@@ -1044,6 +1037,11 @@ for row in range(2):
         idx = row * 6 + col
         x_card = PAD_X + col * (card_w + card_gap)
         draw_mid_card(mid_stories[idx], x_card, y_row)
+
+# ─── Repaint lead sources (drawn AFTER mid cards so nothing clips them) ───
+f_lead_source = get_font("sans", 9, italic=True)
+for src_x, src_y, src_text in lead_sources:
+    draw_text(src_x, src_y, src_text, f_lead_source, MED_GREY)
 
 # ════════════════════════════════════════════════════════════════
 # 7. BOTTOM SECTION: Map (left) + ALSO ON 20 stories (right, 2 cols) (y 783–953)
@@ -1265,7 +1263,7 @@ draw_text_wrapped(PAD_X + 6, dc_y + 14, dc_text, f_dc_text, DARK_GREY, W - 2*PAD
 # 9. MERGED LEGEND (single line at y=996, anchor "lm", 7pt)
 # ════════════════════════════════════════════════════════════════
 f_legend = get_font("sans", 7)
-legend_text = "CERTAINTY: REPORTED = carried by the day's wires \u00b7 CLAIM = one side's account \u00b7 ONGOING = still developing \u2014 Sources: BBC \u00b7 Reuters \u00b7 Al Jazeera \u00b7 Guardian \u00b7 AP \u00b7 SCMP \u00b7 DW \u00b7 UPI \u00b7 FT"
+legend_text = "CERTAINTY: REPORTED = carried by the day's wires \u00b7 CLAIM = one side's account \u2014 Sources: BBC \u00b7 Reuters \u00b7 Al Jazeera \u00b7 Guardian \u00b7 AP \u00b7 SCMP \u00b7 DW \u00b7 UPI \u00b7 FT"
 draw_text(PAD_X, y_legend_y, legend_text, f_legend, MED_GREY, anchor="lm")
 
 # ════════════════════════════════════════════════════════════════
@@ -1555,6 +1553,7 @@ print(f"Saved to out/entry.png")
 
 # Save crops from out/entry.png (1024x1024) with PIL
 from PIL import Image as PILImage
+import shutil
 entry_img = PILImage.open("out/entry.png")
 # out/top_section.png = y 0–260 (masthead + stat + UTC + region + lead 1 top)
 entry_img.crop((0, 0, 1024, 260)).save("out/top_section.png")
@@ -1564,8 +1563,8 @@ entry_img.crop((0, 240, 1024, 550)).save("out/lead_panels.png")
 entry_img.crop((0, 540, 1024, 790)).save("out/mid_section.png")
 # out/bottom_section.png = y 770–1024 (map + ALSO ON + DATE CHECK + legend + footer)
 entry_img.crop((0, 770, 1024, 1024)).save("out/bottom_section.png")
-# out/full_check.png = copy of out/entry.png
-entry_img.save("out/full_check.png")
+# out/full_check.png = byte-identical copy of out/entry.png (cp, do not re-encode)
+shutil.copy2("out/entry.png", "out/full_check.png")
 
 # Print MD5 and byte size of out/entry.png
 import hashlib
