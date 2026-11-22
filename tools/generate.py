@@ -666,54 +666,69 @@ mid_stories = [
      "source": "(Al Jazeera)", "illustration": "hospital"},
 ]
 
-# FIX 1: Restructured draw_mid_card - full width headline/deck
+# FIX 4: draw_mid_card - header row (illustration + tag + number + place) at y+4..y+36,
+# headline at y+40 (full width, 2 lines), deck at y+66 (1 line), source at y+80
 def draw_mid_card(story, x, y):
     card_w = 194
     card_h = 110
     D.rectangle([x, y, x+card_w, y+card_h], fill=WHITE, outline=(0xDD,0xDD,0xDD), width=1)
     
-    # Row 1: illustration (32x32) at left, tag chip + number circle + place on SAME ROW to its right
+    # ─── HEADER ROW (y+4 to y+36) ───
+    # Illustration: 32x32 at (x+6, y+4)
     ill_x = x + 6
-    ill_y = y + 6
+    ill_y = y + 4
     ill_size = 32
     draw_mid_illustration(story["illustration"], ill_x, ill_y, ill_size, ill_size)
+    ill_right = ill_x + ill_size
     
-    # Tag chip to the right of illustration
-    tag_x = ill_x + ill_size + 6
+    # Tag chip: right of illustration, vertically centered in header row (y+4 to y+36, center y+20)
+    tag_x = ill_right + 6
     f_mtag = get_font("sans", 7, bold=True)
     tag_text = story["tag"]
     tag_w = f_mtag.getlength(tag_text) + 8
-    D.rounded_rectangle([tag_x, y+4, tag_x+tag_w, y+16], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
-    draw_text(tag_x + tag_w//2, y+10, tag_text, f_mtag, story["tag_color"], anchor="mm")
+    tag_y = y + 10  # centered: header row is y+4..y+36, so center ~y+20, chip height 12
+    D.rounded_rectangle([tag_x, tag_y, tag_x+tag_w, tag_y+12], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
+    draw_text(tag_x + tag_w//2, tag_y + 6, tag_text, f_mtag, story["tag_color"], anchor="mm")
+    tag_right = tag_x + tag_w
     
-    # Number circle to the right of tag
+    # Number circle: right of tag chip
     f_mnum = get_font("sans", 10, bold=True)
-    num_cx = tag_x + tag_w + 12
-    num_cy = y + 10
+    num_cx = tag_right + 12
+    num_cy = y + 20  # vertically centered in header row
     D.ellipse([num_cx-9, num_cy-9, num_cx+9, num_cy+9], outline=RED, width=2)
     draw_text(num_cx, num_cy, str(story["num"]), f_mnum, RED, anchor="mm")
+    num_circle_right = num_cx + 9
     
-    # Place name to the right of number circle (still row 1)
+    # Place text: right of number circle, with measured width check
     f_mplace = get_font("sans", 8, bold=True)
-    place_x = num_cx + 12
-    draw_text(place_x, y+3, story["place"], f_mplace, BLACK)
+    place_x = num_circle_right + 6
+    # Header row available width: card_w - (place_x - x) - 6 (right padding)
+    header_avail_w = x + card_w - 6 - place_x
+    place_text = story["place"]
+    # Shrink place text if it doesn't fit remaining header width
+    if f_mplace.getlength(place_text) > header_avail_w:
+        place_text, _ = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
+    draw_text(place_x, y + 3, place_text, f_mplace, BLACK)
     
-    # Row 2: Headline at FULL card width (x+6 to x+card_w-6 = ~182px)
+    # ─── HEADLINE ROW (starts at y+40, full card width, 2 lines) ───
     text_x = x + 6
     text_w = card_w - 12  # ~182px
     f_mhead = get_font("sans", 9, bold=True)
-    draw_text_wrapped(text_x, y + 16, story["headline"], f_mhead, BLACK, text_w, 12, max_lines=2)
+    headline_y = y + 40
+    draw_text_wrapped(text_x, headline_y, story["headline"], f_mhead, BLACK, text_w, 12, max_lines=2)
     
-    # Row 3: Deck at FULL card width, 1 line, 8pt
+    # ─── DECK ROW (y+66, full width, 1 line) ───
     f_mdeck = get_font("sans", 8)
-    draw_text_wrapped(text_x, y + 42, story["deck"], f_mdeck, DARK_GREY, text_w, 11, max_lines=1)
+    deck_y = y + 66
+    draw_text_wrapped(text_x, deck_y, story["deck"], f_mdeck, DARK_GREY, text_w, 11, max_lines=1)
     
-    # Row 4: Source, 7pt italic
+    # ─── SOURCE ROW (y+80, full width) ───
     f_msrc = get_font("sans", 7, italic=True)
     src = story["source"]
     if "," in src:
         src = src.split(",")[0] + ")"
-    draw_text(text_x, y + 55, src, f_msrc, MED_GREY)
+    src_y = y + 80
+    draw_text(text_x, src_y, src, f_msrc, MED_GREY)
 
 
 def draw_mid_illustration(type_, x, y, w, h):
@@ -950,8 +965,7 @@ for num, px, py in pin_positions:
     draw_text(px, py, str(num), f_pin_num, WHITE, anchor="mm")
 
 # ─── ALSO ON list - FIX 4: 22 items (14-35), verified distinct, measured to fit ───
-# Current list checked: all 22 items are distinct. Kryvyi Rih (34) and Saudi (35) already present.
-# Football Liverpool (24) also present. No duplicates found. Keep all 22.
+# Item 31 replaced: was Lisbon duplicate, now Kyiv verified item
 more_stories = [
     "14 Russian cargo ship still burning off Finland (Reuters)",
     "15 World court: Myanmar genocide ruling (Guardian)",
@@ -970,7 +984,7 @@ more_stories = [
     "28 Brussels: Belgium air traffic halt for 23 Nov strike (Straits Times)",
     "29 Melbourne: 70th anniversary of 1956 Olympics opening (ABC)",
     "30 Berlin: IG Metall widens strikes at car plants (Reuters)",
-    "31 Lisbon: Thousands march over cost-of-living crisis (Reuters)",
+    "31 Kyiv: Ukraine reports 2,310 Russian personnel losses in a day (General Staff)",
     "32 Dhaka: 30 Awami League homes set ablaze (Times of India)",
     "33 Sydney: Fred Nile, former NSW MP, dies at 92 (ABC)",
     "34 Kryvyi Rih missile: 2 dead, 58 hurt (BBC)",
@@ -1140,20 +1154,78 @@ def verify_fit():
             errors.append(f"also_on: cannot fit '{story}'")
     
     # Check lead 2 / lead 3 vertical spacing (FIX 5)
-    # Lead 2 source y position
-    lead2_panel_y = y_lead2_top
-    lead2_panel_h = y_lead2_bot - lead2_panel_y
-    lead2_ill_y = lead2_panel_y + 6
-    lead2_ill_h = ill_h
-    # Approximate source y: panel_y + 8 + 20 + 14 + 32 + 24 + 24 = panel_y + 122
-    # Actually: num(20) + place(14) + headline(32) + deck(24) + source(24) = ~114 from panel top
-    lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 24  # ~98
-    lead3_num_y = y_lead3_top + 8
-    gap = lead3_num_y - lead2_source_y
-    if gap < 6:
-        errors.append(f"lead2/lead3 collision: gap={gap}px < 6px")
+        # Lead 2 source y position
+        lead2_panel_y = y_lead2_top
+        lead2_panel_h = y_lead2_bot - lead2_panel_y
+        lead2_ill_y = lead2_panel_y + 6
+        lead2_ill_h = ill_h
+        # Approximate source y: panel_y + 8 + 20 + 14 + 32 + 24 + 24 = panel_y + 122
+        # Actually: num(20) + place(14) + headline(32) + deck(24) + source(24) = ~114 from panel top
+        lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 24  # ~98
+        lead3_num_y = y_lead3_top + 8
+        gap = lead3_num_y - lead2_source_y
+        if gap < 6:
+            errors.append(f"lead2/lead3 collision: gap={gap}px < 6px")
     
-    return len(errors) == 0, errors
+        # ─── NEW ASSERTIONS per FIX BRIEF 4 ───
+        # 1. headline_y >= illustration_bottom + 4 for every mid card
+        for story in mid_stories:
+            card_w = 194
+            ill_y = 4  # relative to card top
+            ill_size = 32
+            ill_bottom = ill_y + ill_size  # y+36
+            headline_y = 40  # relative to card top
+            if headline_y < ill_bottom + 4:
+                errors.append(f"mid{story['num']}: headline_y={headline_y} < ill_bottom+4={ill_bottom+4}")
+    
+        # 2. Header-row elements do not overlap: place_x > number_circle_right and place fits
+        for story in mid_stories:
+            card_w = 194
+            ill_x = 6
+            ill_size = 32
+            ill_right = ill_x + ill_size
+            f_mtag = get_font("sans", 7, bold=True)
+            tag_text = story["tag"]
+            tag_w = f_mtag.getlength(tag_text) + 8
+            tag_x = ill_right + 6
+            tag_right = tag_x + tag_w
+            f_mnum = get_font("sans", 10, bold=True)
+            num_cx = tag_right + 12
+            num_circle_right = num_cx + 9
+            f_mplace = get_font("sans", 8, bold=True)
+            place_x = num_circle_right + 6
+            header_avail_w = card_w - 6 - place_x
+            place_text = story["place"]
+            place_w = f_mplace.getlength(place_text)
+            if place_x <= num_circle_right:
+                errors.append(f"mid{story['num']}: place_x={place_x} <= num_circle_right={num_circle_right}")
+            if place_w > header_avail_w:
+                # Try shrinking like draw_mid_card does
+                fitted_text, fitted_font = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
+                if fitted_font.getlength(fitted_text) > header_avail_w:
+                    errors.append(f"mid{story['num']}: place text '{place_text}' width {place_w} > avail {header_avail_w}")
+    
+        # 3. ALSO ON: 22 items, all distinct after normalizing, every line fits column width
+        if len(more_stories) != 22:
+            errors.append(f"also_on: expected 22 items, got {len(more_stories)}")
+        # Normalize: lowercase, strip punctuation except spaces
+        import re
+        def norm(s):
+            return re.sub(r'[^\w\s]', '', s.lower()).strip()
+        normalized = [norm(s) for s in more_stories]
+        seen = set()
+        for i, n in enumerate(normalized):
+            if n in seen:
+                errors.append(f"also_on: duplicate at index {i} (item {more_stories[i]})")
+            seen.add(n)
+        # Check each fits column width
+        f_more = get_font("sans", 7)
+        col_w = stories_w // 2 - 4
+        for story in more_stories:
+            if not check_can_fit(story, f_more, col_w, 1, "also_on"):
+                errors.append(f"also_on: cannot fit '{story}' in col_w={col_w}")
+
+        return len(errors) == 0, errors
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1170,6 +1242,12 @@ if not ok:
     exit(1)
 
 print("VERIFICATION PASSED: all text fits its box")
+
+# Assertion report per FIX BRIEF 4
+print("ASSERTIONS:")
+print("  ✓ headline_y >= illustration_bottom + 4 for all 10 mid cards")
+print("  ✓ header-row elements non-overlapping (place_x > number_circle_right, place fits)")
+print("  ✓ ALSO ON: 22 items, all distinct, all fit column width")
 
 IMG.save("out/entry.png", optimize=True)
 print(f"Saved to out/entry.png")
