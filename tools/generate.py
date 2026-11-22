@@ -414,96 +414,206 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
     """Draw illustration on the PASSED draw object (not global D). All coords relative to x,y."""
     cx, cy = x + w//2, y + h//2
     if type_ == "climate":
-        # Dawn in Antalya - conference hall with large globe
-        draw.rectangle([x, y, x+w, y+h], fill=(0xE8,0xEC,0xF4))
-        # Delegate rows
-        for row in range(5):
-            ry = y + h - 20 - row * 16
-            for seat in range(6):
-                sx = x + 15 + seat * (w - 30) // 5
-                draw.rounded_rectangle([sx-5, ry-7, sx+5, ry], radius=1, fill=(0xC0,0xCC,0xDC), outline=(0xA0,0xB8,0xD0))
-                draw.ellipse([sx-4, ry-14, sx+4, ry-6], fill=(0xC0,0xA0,0x80))
-        # Podium
-        draw.rectangle([cx-30, y+h-40, cx+30, y+h-20], fill=(0x70,0x80,0x90))
-        # Large globe projection
-        globe_r = min(w, h) // 2 - 5
-        draw.ellipse([cx-globe_r, cy-globe_r, cx+globe_r, cy+globe_r], outline=(0x30,0x70,0xB0), width=3)
-        for lat in (-60, -30, 0, 30, 60):
-            ly = cy + lat * globe_r // 60
-            draw.arc([cx-globe_r, ly-2, cx+globe_r, ly+2], 0, 360, fill=(0x30,0x70,0xB0), width=1)
-        for lon in (-60, -30, 0, 30, 60):
-            lx = cx + lon * globe_r // 60
-            draw.arc([lx-1, cy-globe_r, lx+1, cy+globe_r], 0, 360, fill=(0x30,0x70,0xB0), width=1)
-        for gx, gy, gr in [(cx-30, cy-20, 15), (cx+20, cy-10, 12), (cx-10, cy+25, 18), (cx+35, cy+15, 10)]:
-            draw.ellipse([gx-gr, gy-gr, gx+gr, gy+gr], fill=(0x20,0x80,0x30))
-        # COP31 banner
-        draw.rectangle([cx-100, y+6, cx+100, y+28], fill=EUROPE_BLUE)
-        f_banner = get_font("sans", 12, bold=True)
-        draw_text_on_layer(draw, cx, y+17, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
-        for bx in [x+10, x+w-110]:
-            draw.rectangle([bx, y+35, bx+100, y+55], fill=(0x1E,0x3A,0x8A))
-            f_side = get_font("sans", 8, bold=True)
-            draw_text_on_layer(draw, bx+50, y+45, "UNFCCC", f_side, WHITE, anchor="mm")
-    
-    elif type_ == "bahrain":
-        # Dusk in Manama - Bahrain coast with burning base
-        # Sky - dusk colors
+        # Dawn in Antalya - conference hall scene
+        # Dawn gradient: warm amber at horizon (bottom) -> pale blue at top
         for i in range(h):
             ratio = i / h
-            r = int(0x15 + (0x40 - 0x15) * ratio)
-            g = int(0x25 + (0x30 - 0x25) * ratio)
-            b = int(0x45 + (0x50 - 0x45) * ratio)
+            # Bottom (ratio=1): warm amber ~ #D4A843 | Top (ratio=0): pale blue ~ #A8C8E8
+            r = int(0xA8 + (0xD4 - 0xA8) * ratio)
+            g = int(0xC8 + (0xA8 - 0xC8) * ratio)
+            b = int(0xE8 + (0x43 - 0xE8) * ratio)
             draw.line([x, y+i, x+w, y+i], fill=(r, g, b))
-        # Fire glow
-        ex = x + w//2
-        ey = y + h//3
-        for r, color in [(100, (0x30,0x10,0x05)), (70, (0x50,0x15,0x05)), (40, (0x80,0x20,0x05)), (20, (0xB0,0x30,0x10))]:
-            draw.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
-        # Smoke plumes
-        for i in range(10):
-            sx = x + 20 + i * (w-40)//9
-            sy = y + 15 + (i%3)*15
-            sr = 18 + (i%4)*6
-            draw.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x10,0x10,0x15))
-        # Water line
-        cy = y + h * 0.55
-        for wx in range(0, w, 20):
-            draw.arc([x+wx, cy-10, x+wx+20, cy+10], 0, 180, fill=(0x10,0x30,0x55), width=1)
-        draw.line([x, cy, x+w, cy], fill=(0x7B,0x60,0x40), width=2)
-        # Tanks
-        tank_x = x + 20
-        for tx in [tank_x, tank_x+85, tank_x+170, tank_x+255]:
-            draw.rectangle([tx, cy-80, tx+55, cy], fill=(0x40,0x40,0x45), outline=(0x25,0x25,0x25))
-            draw.ellipse([tx, cy-90, tx+55, cy-70], fill=(0x50,0x50,0x55), outline=(0x25,0x25,0x25))
-            draw.rectangle([tx+10, cy-85, tx+45, cy-75], fill=(0x60,0x60,0x65))
-            draw.line([tx+27, cy-90, tx+27, cy-110], fill=(0x30,0x30,0x30), width=3)
-            draw.line([tx+27, cy-110, tx+12, cy-115], fill=(0x30,0x30,0x30), width=2)
-        # Main explosion
-        ex = x + w//2
-        ey = cy - 80
-        for i in range(7):
-            rx = ex + (i-3)*20
-            draw.ellipse([rx-12, cy+5, rx+12, cy+30], fill=(0xFF,0x40,0x10))
-        for r, color in [(40, (0xFF,0x20,0x00)), (32, (0xFF,0x60,0x10)), (22, (0xFF,0xA0,0x20)), (12, (0xFF,0xD0,0x60))]:
-            draw.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
-        # Fire column
-        draw.polygon([(ex-25, ey), (ex-12, y+5), (ex+12, y+5), (ex+25, ey)], fill=(0xFF,0x50,0x10))
-        # Smoke plume
-        for i in range(8):
-            sx = ex + (i%3-1)*12
-            sy = ey - 30 - i*12
-            sr = 15 + i*4
-            draw.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x15,0x15,0x18))
-        # Debris
-        for i in range(15):
-            dx = ex + (i%5-2)*18
-            dy = ey - 10 - (i//5)*15
-            draw.ellipse([dx-2, dy-2, dx+2, dy+2], fill=(0xFF,0xA0,0x30))
-        # Shoreline
-        for sx in range(x, x+w, 8):
-            draw.ellipse([sx-2, cy-2, sx+2, cy+2], fill=(0x50,0x40,0x30))
+        
+        # Back wall with tall windows (upper-middle area, well inside frame)
+        wall_top = y + 30
+        wall_bottom = y + h - 15
+        window_count = 5
+        window_width = 24
+        window_gap = (w - window_count * window_width) // (window_count + 1)
+        for i in range(window_count):
+            wx = x + window_gap + i * (window_width + window_gap)
+            # Window frame (darker wall segment)
+            draw.rectangle([wx - 2, wall_top, wx + window_width + 2, wall_bottom], fill=(0x50, 0x48, 0x40))
+            # Window slit - pale gold dawn light
+            draw.rectangle([wx, wall_top + 4, wx + window_width, wall_bottom - 4], fill=(0xF0, 0xD8, 0x90))
+            # Vertical mullion
+            draw.line([wx + window_width//2, wall_top + 4, wx + window_width//2, wall_bottom - 4], fill=(0xD0, 0xB8, 0x70), width=1)
+        
+        # COP31 banner at top centre (cx-100..cx+100, y+6..y+38) - EXTENDED to y+38
+        banner_left = cx - 100
+        banner_right = cx + 100
+        banner_top = y + 6
+        banner_bottom = y + 38
+        draw.rectangle([banner_left, banner_top, banner_right, banner_bottom], fill=EUROPE_BLUE)
+        f_banner = get_font("sans", 12, bold=True)
+        draw_text_on_layer(draw, cx, y + 17, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
+        # UNFCCC 8pt bold white centred at y+31 INSIDE the banner
+        f_unfccc = get_font("sans", 8, bold=True)
+        draw_text_on_layer(draw, cx, y + 31, "UNFCCC", f_unfccc, WHITE, anchor="mm")
+        
+        # Three receding rows of delegate desks (bottom half) - SHIFTED DOWN
+        # Row 1 (back) at y+42, Row 2 at y+58, Row 3 (front) at y+72
+        row_data = [
+            {"y": y + 42, "desk_w": w - 60, "desk_h": 7, "head_r": 3, "head_color": (0xA0, 0x90, 0x70), "desk_color": (0x40, 0x38, 0x30), "lamp_color": (0xE0, 0xB0, 0x40)},
+            {"y": y + 58, "desk_w": w - 40, "desk_h": 7, "head_r": 4, "head_color": (0xB0, 0x98, 0x78), "desk_color": (0x50, 0x48, 0x38), "lamp_color": (0xE8, 0xC0, 0x50)},
+            {"y": y + 72, "desk_w": w - 20, "desk_h": 7, "head_r": 5, "head_color": (0xC0, 0xA8, 0x88), "desk_color": (0x60, 0x58, 0x48), "lamp_color": (0xF0, 0xD0, 0x60)},
+        ]
+        for rd in row_data:
+            desk_x = cx - rd["desk_w"] // 2
+            desk_y = rd["y"]
+            # Desk bar - for bottom row (index 2), leave gap for podium at cx-32..cx+32
+            if rd is row_data[2]:
+                # Front row: draw two segments with gap for podium
+                gap_left = cx - 32
+                gap_right = cx + 32
+                # Left segment
+                draw.rectangle([desk_x, desk_y, gap_left, desk_y + rd["desk_h"]], fill=rd["desk_color"])
+                # Right segment
+                draw.rectangle([gap_right, desk_y, desk_x + rd["desk_w"], desk_y + rd["desk_h"]], fill=rd["desk_color"])
+            else:
+                draw.rectangle([desk_x, desk_y, desk_x + rd["desk_w"], desk_y + rd["desk_h"]], fill=rd["desk_color"])
+            # Delegate heads (7 per row, evenly spaced) - skip heads in podium gap on bottom row
+            for seat in range(7):
+                hx = desk_x + rd["desk_w"] // 14 + seat * rd["desk_w"] // 7
+                # Skip heads that fall in podium gap on bottom row
+                if rd is row_data[2] and cx - 32 <= hx <= cx + 32:
+                    continue
+                hy = desk_y - rd["head_r"] - 2
+                draw.ellipse([hx - rd["head_r"], hy - rd["head_r"], hx + rd["head_r"], hy + rd["head_r"]], fill=rd["head_color"])
+                # Tiny flag/name-plate tick
+                draw.line([hx, hy - rd["head_r"] - 1, hx, hy - rd["head_r"] - 4], fill=(0x80, 0x60, 0x30), width=1)
+            # Warm desk-lamp dots (3 per row) - skip lamps in podium gap on bottom row
+            for lamp in range(3):
+                lx = desk_x + rd["desk_w"] // 4 + lamp * rd["desk_w"] // 3
+                if rd is row_data[2] and cx - 32 <= lx <= cx + 32:
+                    continue
+                ly = desk_y + rd["desk_h"] // 2
+                draw.ellipse([lx - 1, ly - 1, lx + 1, ly + 1], fill=rd["lamp_color"])
+        
+        # Podium at bottom centre: dark block cx-28..cx+28, y+70..y+85
+        podium_w = 56
+        podium_h = 15
+        podium_x = cx - podium_w // 2
+        podium_y = y + 70
+        # Podium base
+        draw.rectangle([podium_x, podium_y, podium_x + podium_w, podium_y + podium_h], fill=(0x30, 0x28, 0x20))
+        # Podium top
+        draw.rectangle([podium_x - 4, podium_y - 4, podium_x + podium_w + 4, podium_y], fill=(0x40, 0x38, 0x30))
+        # Speaker silhouette (head + shoulders) RISING ABOVE podium at y+58..y+70, drawn AFTER desks
+        speaker_cx = cx
+        speaker_shoulder_y = podium_y - 6  # y+64
+        speaker_head_y = podium_y - 18     # y+52
+        # Shoulders
+        draw.ellipse([speaker_cx - 14, speaker_shoulder_y - 6, speaker_cx + 14, speaker_shoulder_y + 2], fill=(0x20, 0x18, 0x10))
+        # Head
+        draw.ellipse([speaker_cx - 7, speaker_head_y - 7, speaker_cx + 7, speaker_head_y + 7], fill=(0xC0, 0xA0, 0x80))
+    
+    elif type_ == "bahrain":
+        # Dusk in Manama - Bahrain coast with Patriot radars, one smoke column, one fire glow
+        # Frame: x..x+w (552px), y..y+h (85px). Horizon at ~y + h*0.62 = y+53.
+        # Top calm zone: y..y+26, left x..x+200 and right x+w-120..x+w for tag/kicker/chip.
+        # Bottom calm zone: y+h-10..y+h, left x..x+100 for caption.
+        cx = x + w // 2
+        horizon_y = y + int(h * 0.62)  # ~y+53
+
+        # 1) DUSK SKY GRADIENT: deep orange at horizon -> dusky purple/indigo at top
+        for i in range(h):
+            ratio = i / h
+            # Top (i=0, ratio=0): dusky indigo ~ #3A2A5A
+            # Horizon (i~53, ratio~0.62): deep orange ~ #C86C1A
+            # Below horizon: not drawn here (sea covers)
+            if ratio <= 0.62:
+                # Interpolate from indigo (top) to deep orange (horizon)
+                t = ratio / 0.62
+                r = int(0x3A + (0xC8 - 0x3A) * t)
+                g = int(0x2A + (0x6C - 0x2A) * t)
+                b = int(0x5A + (0x1A - 0x5A) * t)
+            else:
+                # Below horizon: very dark (will be covered by sea)
+                r, g, b = 0x10, 0x0A, 0x15
+            draw.line([x, y+i, x+w, y+i], fill=(r, g, b))
+
+        # 2) SEA: bottom third (horizon_y .. y+h) in dark blue
+        sea_top = horizon_y
+        sea_bottom = y + h
+        sea_color = (0x08, 0x15, 0x28)  # very dark blue
+        draw.rectangle([x, sea_top, x+w, sea_bottom], fill=sea_color)
+        # Thin lighter reflective band just under horizon
+        draw.line([x, horizon_y, x+w, horizon_y], fill=(0x20, 0x35, 0x55), width=1)
+        # 2-3 short horizontal wave ticks
+        for wx in [x + w//4, x + w//2, x + 3*w//4]:
+            draw.line([wx - 8, horizon_y + 6, wx + 8, horizon_y + 6], fill=(0x18, 0x2A, 0x45), width=1)
+            draw.line([wx - 5, horizon_y + 14, wx + 5, horizon_y + 14], fill=(0x15, 0x25, 0x40), width=1)
+
+        # 3) COASTLINE SILHOUETTE: low dark skyline on horizon line across middle
+        # A few distinct flat-roofed buildings of varying heights
+        building_color = (0x0A, 0x08, 0x0C)  # near-black silhouette
+        buildings = [
+            # (left, width, height_above_horizon)
+            (x + 40, 50, 22),
+            (x + 110, 35, 16),
+            (x + 165, 45, 28),
+            (x + 230, 30, 14),
+            (x + 280, 55, 24),
+            (x + 355, 40, 18),
+            (x + 415, 60, 26),
+            (x + 495, 35, 15),
+        ]
+        for bx, bw, bh in buildings:
+            # Clamp to frame
+            bx = max(x, min(x + w - bw, bx))
+            by = horizon_y - bh
+            draw.rectangle([bx, by, bx + bw, horizon_y], fill=building_color)
+
+        # 4) TWO RADAR DISHES at ~1/3 and ~2/3 across frame
+        # Each: mast (vertical line) + open parabolic bowl (arc/chord) tilted upward
+        radar_x_positions = [x + w // 3, x + 2 * w // 3]  # ~x+184, ~x+368
+        for rx in radar_x_positions:
+            # Mast: vertical line from horizon up ~30px
+            mast_top = horizon_y - 30
+            draw.line([rx, horizon_y, rx, mast_top], fill=(0x60, 0x60, 0x65), width=2)
+            # Parabolic bowl: arc/chord shape ~26px wide, sitting on mast top, tilted up
+            bowl_w = 26
+            bowl_h = 14
+            bowl_left = rx - bowl_w // 2
+            bowl_right = rx + bowl_w // 2
+            bowl_top = mast_top - bowl_h
+            # Bowl interior (lighter grey)
+            draw.chord([bowl_left, bowl_top, bowl_right, mast_top + 2], 0, 180, fill=(0xA0, 0xA0, 0xA8))
+            # Bowl rim (darker)
+            draw.arc([bowl_left, bowl_top, bowl_right, mast_top + 2], 0, 180, fill=(0x50, 0x50, 0x58), width=2)
+            # Feed arm (small line from center to bowl edge)
+            draw.line([rx, mast_top, rx, bowl_top + 2], fill=(0x50, 0x50, 0x58), width=1)
+
+        # 5) ONE CONTROLLED SMOKE COLUMN: tapered, 3-4 stacked ellipses getting SMALLER as they rise
+        # Place near first radar (left side), on coastline
+        # Top of column no higher than y+12 (panel coords)
+        smoke_base_x = radar_x_positions[0] - 15  # near left radar building
+        smoke_base_y = horizon_y
+        # 4 ellipses, decreasing size, top at y+12 (center y=17, radius 5)
+        smoke_ellipses = [
+            (smoke_base_x, smoke_base_y - 4, 14, 8),   # base: wide, center y=49
+            (smoke_base_x, smoke_base_y - 15, 11, 7),  # smaller, center y=38
+            (smoke_base_x, smoke_base_y - 26, 8, 6),   # smaller, center y=27
+            (smoke_base_x, smoke_base_y - 36, 5, 5),   # top: small, center y=17, top at y=12
+        ]
+        for ex, ey, erx, ery in smoke_ellipses:
+            # Clamp to frame horizontally
+            ex = max(x + erx, min(x + w - erx, ex))
+            # Clamp vertically
+            ey = max(y + ery, min(y + h - ery, ey))
+            draw.ellipse([ex - erx, ey - ery, ex + erx, ey + ery], fill=(0x40, 0x38, 0x3C))
+
+        # 6) ONE SMALL FIRE GLOW at BASE of smoke column
+        glow_x = smoke_base_x
+        glow_y = smoke_base_y - 2
+        # Two concentric ellipses
+        draw.ellipse([glow_x - 14, glow_y - 8, glow_x + 14, glow_y + 8], fill=(0xFF, 0x50, 0x10))
+        draw.ellipse([glow_x - 8, glow_y - 4, glow_x + 8, glow_y + 4], fill=(0xFF, 0xA0, 0x30))
+
+        # 7) MANAMA label at bottom centre (kept from original)
         f_b = get_font("sans", 10, bold=True)
-        draw_text_on_layer(draw, cx, y+h-8, "MANAMA", f_b, (0xFF,0xC0,0xC0), anchor="mm")
+        draw_text_on_layer(draw, cx, y + h - 8, "MANAMA", f_b, (0xFF, 0xC0, 0xC0), anchor="mm")
     
     elif type_ == "kyiv":
         # Night over Kyiv
@@ -673,7 +783,7 @@ def draw_mid_card(story, x, y):
     card_h = 110
     D.rectangle([x, y, x+card_w, y+card_h], fill=WHITE, outline=(0xDD,0xDD,0xDD), width=1)
     
-    # ─── HEADER ROW (y+4 to y+36) ───
+    # ─── HEADER BAND (y+4 to y+36) ───
     # Illustration: 32x32 at (x+6, y+4)
     ill_x = x + 6
     ill_y = y + 4
@@ -681,34 +791,36 @@ def draw_mid_card(story, x, y):
     draw_mid_illustration(story["illustration"], ill_x, ill_y, ill_size, ill_size)
     ill_right = ill_x + ill_size
     
-    # Tag chip: right of illustration, vertically centered in header row (y+4 to y+36, center y+20)
+    # Row 1 (y+4..y+22): Tag chip and Number circle
+    # Tag chip: right of illustration at y+7, height 12 (y+7..y+19)
     tag_x = ill_right + 6
     f_mtag = get_font("sans", 7, bold=True)
     tag_text = story["tag"]
     tag_w = f_mtag.getlength(tag_text) + 8
-    tag_y = y + 10  # centered: header row is y+4..y+36, so center ~y+20, chip height 12
+    tag_y = y + 7
     D.rounded_rectangle([tag_x, tag_y, tag_x+tag_w, tag_y+12], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
     draw_text(tag_x + tag_w//2, tag_y + 6, tag_text, f_mtag, story["tag_color"], anchor="mm")
     tag_right = tag_x + tag_w
     
-    # Number circle: right of tag chip
+    # Number circle: right of tag chip, center cy=y+13, radius 8 (spans y+5..y+21)
     f_mnum = get_font("sans", 10, bold=True)
     num_cx = tag_right + 12
-    num_cy = y + 20  # vertically centered in header row
-    D.ellipse([num_cx-9, num_cy-9, num_cx+9, num_cy+9], outline=RED, width=2)
+    num_cy = y + 13
+    D.ellipse([num_cx-8, num_cy-8, num_cx+8, num_cy+8], outline=RED, width=2)
     draw_text(num_cx, num_cy, str(story["num"]), f_mnum, RED, anchor="mm")
-    num_circle_right = num_cx + 9
+    # Row 1 ends by y+22
     
-    # Place text: right of number circle, with measured width check
+    # Row 2 (y+24..y+36): Place text on its own line
     f_mplace = get_font("sans", 8, bold=True)
-    place_x = num_circle_right + 6
-    # Header row available width: card_w - (place_x - x) - 6 (right padding)
-    header_avail_w = x + card_w - 6 - place_x
+    place_x = ill_right + 6  # x+44, right of illustration
+    # Row 2 available width: card_w - (place_x - x) - 6 (right padding) = ~144px
+    row2_avail_w = x + card_w - 6 - place_x
     place_text = story["place"]
-    # Shrink place text if it doesn't fit remaining header width
-    if f_mplace.getlength(place_text) > header_avail_w:
-        place_text, _ = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
-    draw_text(place_x, y + 3, place_text, f_mplace, BLACK)
+    # Keep _fit_text_to_width safety fallback, but at 8pt bold every place name must fit without shrinking
+    if f_mplace.getlength(place_text) > row2_avail_w:
+        place_text, _ = _fit_text_to_width(place_text, f_mplace, row2_avail_w, min_font_size=7)
+    draw_text(place_x, y + 24, place_text, f_mplace, BLACK)
+    # Place text height ~10px so it ends ~y+34, clear of headline at y+40
     
     # ─── HEADLINE ROW (starts at y+40, full card width, 2 lines) ───
     text_x = x + 6
