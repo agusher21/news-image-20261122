@@ -451,12 +451,12 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
         f_unfccc = get_font("sans", 8, bold=True)
         draw_text_on_layer(draw, cx, y + 31, "UNFCCC", f_unfccc, WHITE, anchor="mm")
         
-        # Three receding rows of delegate desks (bottom half) - SHIFTED DOWN
-        # Row 1 (back) at y+42, Row 2 at y+58, Row 3 (front) at y+72
+        # Three receding rows of delegate desks (bottom half) - SHIFTED UP to clear caption
+        # Row 1 (back) at y+40, Row 2 at y+52, Row 3 (front) at y+64
         row_data = [
-            {"y": y + 42, "desk_w": w - 60, "desk_h": 7, "head_r": 3, "head_color": (0xA0, 0x90, 0x70), "desk_color": (0x40, 0x38, 0x30), "lamp_color": (0xE0, 0xB0, 0x40)},
-            {"y": y + 58, "desk_w": w - 40, "desk_h": 7, "head_r": 4, "head_color": (0xB0, 0x98, 0x78), "desk_color": (0x50, 0x48, 0x38), "lamp_color": (0xE8, 0xC0, 0x50)},
-            {"y": y + 72, "desk_w": w - 20, "desk_h": 7, "head_r": 5, "head_color": (0xC0, 0xA8, 0x88), "desk_color": (0x60, 0x58, 0x48), "lamp_color": (0xF0, 0xD0, 0x60)},
+            {"y": y + 40, "desk_w": w - 60, "desk_h": 7, "head_r": 3, "head_color": (0xA0, 0x90, 0x70), "desk_color": (0x40, 0x38, 0x30), "lamp_color": (0xE0, 0xB0, 0x40)},
+            {"y": y + 52, "desk_w": w - 40, "desk_h": 7, "head_r": 4, "head_color": (0xB0, 0x98, 0x78), "desk_color": (0x50, 0x48, 0x38), "lamp_color": (0xE8, 0xC0, 0x50)},
+            {"y": y + 64, "desk_w": w - 20, "desk_h": 7, "head_r": 5, "head_color": (0xC0, 0xA8, 0x88), "desk_color": (0x60, 0x58, 0x48), "lamp_color": (0xF0, 0xD0, 0x60)},
         ]
         for rd in row_data:
             desk_x = cx - rd["desk_w"] // 2
@@ -490,11 +490,11 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
                 ly = desk_y + rd["desk_h"] // 2
                 draw.ellipse([lx - 1, ly - 1, lx + 1, ly + 1], fill=rd["lamp_color"])
         
-        # Podium at bottom centre: dark block cx-28..cx+28, y+70..y+85
+        # Podium at bottom centre: dark block cx-28..cx+28, y+62..y+77
         podium_w = 56
         podium_h = 15
         podium_x = cx - podium_w // 2
-        podium_y = y + 70
+        podium_y = y + 62
         # Podium base
         draw.rectangle([podium_x, podium_y, podium_x + podium_w, podium_y + podium_h], fill=(0x30, 0x28, 0x20))
         # Podium top
