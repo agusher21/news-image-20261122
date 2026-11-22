@@ -70,6 +70,14 @@ def draw_text(x, y, text, font, color, anchor="lt", max_width=None):
             text = text[:-3] + "..."
     D.text((x, y), text, font=font, fill=color, anchor=anchor)
 
+def draw_text_on_layer(draw, x, y, text, font, color, anchor="lt", max_width=None):
+    if max_width:
+        while font.getlength(text) > max_width and len(text) > 3:
+            text = text[:-1]
+        if font.getlength(text) > max_width:
+            text = text[:-3] + "..."
+    draw.text((x, y), text, font=font, fill=color, anchor=anchor)
+
 def draw_text_wrapped(x, y, text, font, color, max_width, line_height, max_lines=2):
     words = text.split()
     lines = []
@@ -283,10 +291,14 @@ def draw_lead_panel(story, y_top):
     D.rounded_rectangle([stat_chip_x, stat_chip_y, stat_chip_x+stat_w, stat_chip_y+18], radius=2, fill=STAT_CHIP_BG, outline=STAT_CHIP_BORDER)
     draw_text(stat_chip_x + stat_w//2, stat_chip_y + 9, stat_text, f_stat_chip, RED, anchor="mm")
     
-    # Illustration area
+    # Illustration area - draw on separate RGBA layer to clip to panel
     ill_y = y_top + 28
     ill_h = panel_h - 28 - 18  # leave space for caption
-    draw_illustration(story["illustration"], PAD_X, ill_y, ill_w, ill_h)
+    ill_layer = Image.new("RGBA", (ill_w, ill_h), (255, 255, 255, 0))
+    ill_draw = ImageDraw.Draw(ill_layer)
+    draw_illustration_on_layer(ill_draw, story["illustration"], 0, 0, ill_w, ill_h)
+    # Paste onto main image
+    IMG.paste(ill_layer, (PAD_X, ill_y), ill_layer)
     
     # Caption bottom-left
     f_caption = get_font("sans", 8, italic=True)
@@ -315,131 +327,131 @@ def draw_lead_panel(story, y_top):
     ty += 28
     draw_text(text_x, ty, story["source"], f_lead_source, MED_GREY)
 
-def draw_illustration(type_, x, y, w, h):
+def draw_illustration_on_layer(draw, type_, x, y, w, h):
     cx, cy = x + w//2, y + h//2
     if type_ == "climate":
         # Conference hall: rows of seats, podium, LARGE globe projection filling width
-        D.rectangle([x, y, x+w, y+h], fill=(0xF0,0xF4,0xF8))
+        draw.rectangle([x, y, x+w, y+h], fill=(0xF0,0xF4,0xF8))
         # MORE delegate rows - fill the hall
         for row in range(6):
             ry = y + h - 20 - row * 16
             for seat in range(7):
                 sx = x + 15 + seat * (w - 30) // 6
-                D.rounded_rectangle([sx-5, ry-7, sx+5, ry], radius=1, fill=(0xD0,0xDC,0xE8), outline=(0xA0,0xB8,0xD0))
+                draw.rounded_rectangle([sx-5, ry-7, sx+5, ry], radius=1, fill=(0xD0,0xDC,0xE8), outline=(0xA0,0xB8,0xD0))
                 # Delegate head
-                D.ellipse([sx-4, ry-14, sx+4, ry-6], fill=(0xC0,0xA0,0x80))
+                draw.ellipse([sx-4, ry-14, sx+4, ry-6], fill=(0xC0,0xA0,0x80))
         # Podium
-        D.rectangle([cx-30, y+h-40, cx+30, y+h-20], fill=(0x70,0x80,0x90))
+        draw.rectangle([cx-30, y+h-40, cx+30, y+h-20], fill=(0x70,0x80,0x90))
         # LARGER Globe on wall - fills most of illustration width
         globe_r = min(w, h) // 2 - 5
-        D.ellipse([cx-globe_r, cy-globe_r, cx+globe_r, cy+globe_r], outline=(0x30,0x70,0xB0), width=3)
+        draw.ellipse([cx-globe_r, cy-globe_r, cx+globe_r, cy+globe_r], outline=(0x30,0x70,0xB0), width=3)
         for lat in (-60, -30, 0, 30, 60):
             ly = cy + lat * globe_r // 60
-            D.arc([cx-globe_r, ly-2, cx+globe_r, ly+2], 0, 360, fill=(0x30,0x70,0xB0), width=1)
+            draw.arc([cx-globe_r, ly-2, cx+globe_r, ly+2], 0, 360, fill=(0x30,0x70,0xB0), width=1)
         for lon in (-60, -30, 0, 30, 60):
             lx = cx + lon * globe_r // 60
-            D.arc([lx-1, cy-globe_r, lx+1, cy+globe_r], 0, 360, fill=(0x30,0x70,0xB0), width=1)
+            draw.arc([lx-1, cy-globe_r, lx+1, cy+globe_r], 0, 360, fill=(0x30,0x70,0xB0), width=1)
         # Continents suggestion - green blobs
         for gx, gy, gr in [(cx-30, cy-20, 15), (cx+20, cy-10, 12), (cx-10, cy+25, 18), (cx+35, cy+15, 10)]:
-            D.ellipse([gx-gr, gy-gr, gx+gr, gy+gr], fill=(0x20,0x80,0x30))
+            draw.ellipse([gx-gr, gy-gr, gx+gr, gy+gr], fill=(0x20,0x80,0x30))
         # COP31 banner at top
-        D.rectangle([cx-100, y+6, cx+100, y+28], fill=EUROPE_BLUE)
+        draw.rectangle([cx-100, y+6, cx+100, y+28], fill=EUROPE_BLUE)
         f_banner = get_font("sans", 12, bold=True)
-        draw_text(cx, y+17, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
+        draw_text_on_layer(draw, cx, y+17, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
         # Side banners
         for bx in [x+10, x+w-110]:
-            D.rectangle([bx, y+35, bx+100, y+55], fill=(0x1E,0x3A,0x8A))
+            draw.rectangle([bx, y+35, bx+100, y+55], fill=(0x1E,0x3A,0x8A))
             f_side = get_font("sans", 8, bold=True)
-            draw_text(bx+50, y+45, "UNFCCC", f_side, WHITE, anchor="mm")
+            draw_text_on_layer(draw, bx+50, y+45, "UNFCCC", f_side, WHITE, anchor="mm")
 
     elif type_ == "drones":
         # Night sky over Kyiv
-        D.rectangle([x, y, x+w, y+h], fill=(0x0A,0x12,0x25))
+        draw.rectangle([x, y, x+w, y+h], fill=(0x0A,0x12,0x25))
         # Moon
-        D.ellipse([x+w-60, y+10, x+w-15, y+55], fill=(0xE8,0xE8,0xC8))
+        draw.ellipse([x+w-60, y+10, x+w-15, y+55], fill=(0xE8,0xE8,0xC8))
         # City silhouette - simple
         bw = w // 7
         for i in range(7):
             bx = x + i * bw
             bh = [h-25, h-40, h-30, h-50, h-35, h-28, h-42][i]
             bh = max(15, min(h-15, bh))
-            D.rectangle([bx, y+h-bh, bx+bw-2, y+h], fill=(0x04,0x08,0x12))
+            draw.rectangle([bx, y+h-bh, bx+bw-2, y+h], fill=(0x04,0x08,0x12))
             # Windows
             for wy in range(y+h-bh+6, y+h-6, 12):
                 for wx in range(bx+3, bx+bw-3, 10):
                     if (wx + wy) % 4 == 0:
-                        D.rectangle([wx, wy, wx+3, wy+5], fill=(0xFF,0xD8,0x70))
+                        draw.rectangle([wx, wy, wx+3, wy+5], fill=(0xFF,0xD8,0x70))
         # Drone swarm - REDUCED count, kept away from center caption area
         for i in range(12):
             dx = x + 15 + (i % 4) * (w-30)//3
             dy = y + 15 + (i // 4) * (h-70)//2
-            D.polygon([(dx, dy), (dx-3, dy+6), (dx+3, dy+6)], fill=(0xFF,0x30,0x30))
-            D.line([dx, dy+6, dx, dy+10], fill=(0xFF,0x50,0x50), width=1)
+            draw.polygon([(dx, dy), (dx-3, dy+6), (dx+3, dy+6)], fill=(0xFF,0x30,0x30))
+            draw.line([dx, dy+6, dx, dy+10], fill=(0xFF,0x50,0x50), width=1)
         # LIGHT smoke trails - smaller, not covering skyline or caption
         for i in range(4):
             sx = x + 20 + i * (w-40)//3
             sy = y + h - 30 - (i%2)*8
-            D.ellipse([sx-8, sy-4, sx+8, sy+4], fill=(0x20,0x20,0x30))
+            draw.ellipse([sx-8, sy-4, sx+8, sy+4], fill=(0x20,0x20,0x30))
         f_k = get_font("sans", 10, bold=True)
-        draw_text(cx, y+h-8, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
+        draw_text_on_layer(draw, cx, y+h-8, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
         
     elif type_ == "explosion":
         # Bahrain coast - FULL panel filled with burning base/coastline scene
         # Sky - fill with dramatic smoke and fire glow, not empty
-        D.rectangle([x, y, x+w, y+h], fill=(0x15,0x25,0x45))
+        draw.rectangle([x, y, x+w, y+h], fill=(0x15,0x25,0x45))
         # Fire glow in sky - radiating from explosion center
         ex = x + w//2
         ey = y + h//3  # explosion higher up
         for r, color in [(120, (0x30,0x10,0x05)), (90, (0x50,0x15,0x05)), (60, (0x80,0x20,0x05)), (30, (0xB0,0x30,0x10))]:
-            D.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
+            draw.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
         # Heavy smoke plumes across the sky
         for i in range(12):
             sx = x + 20 + i * (w-40)//11
             sy = y + 15 + (i%3)*15
             sr = 20 + (i%4)*8
-            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x10,0x10,0x15))
+            draw.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x10,0x10,0x15))
         # Water - animated waves (moved up, more prominent)
         cy = y + h * 0.55  # water line higher - more coastline visible
         for wx in range(0, w, 20):
-            D.arc([x+wx, cy-10, x+wx+20, cy+10], 0, 180, fill=(0x10,0x30,0x55), width=1)
-        D.line([x, cy, x+w, cy], fill=(0x7B,0x60,0x40), width=2)
+            draw.arc([x+wx, cy-10, x+wx+20, cy+10], 0, 180, fill=(0x10,0x30,0x55), width=1)
+        draw.line([x, cy, x+w, cy], fill=(0x7B,0x60,0x40), width=2)
         # Tanks/storage facilities along coast - more detail
         tank_x = x + 20
         for tx in [tank_x, tank_x+85, tank_x+170, tank_x+255]:
-            D.rectangle([tx, cy-80, tx+55, cy], fill=(0x40,0x40,0x45), outline=(0x25,0x25,0x25))
-            D.ellipse([tx, cy-90, tx+55, cy-70], fill=(0x50,0x50,0x55), outline=(0x25,0x25,0x25))
+            draw.rectangle([tx, cy-80, tx+55, cy], fill=(0x40,0x40,0x45), outline=(0x25,0x25,0x25))
+            draw.ellipse([tx, cy-90, tx+55, cy-70], fill=(0x50,0x50,0x55), outline=(0x25,0x25,0x25))
             # Tank details
-            D.rectangle([tx+10, cy-85, tx+45, cy-75], fill=(0x60,0x60,0x65))
+            draw.rectangle([tx+10, cy-85, tx+45, cy-75], fill=(0x60,0x60,0x65))
             # Pipes
-            D.line([tx+27, cy-90, tx+27, cy-110], fill=(0x30,0x30,0x30), width=3)
-            D.line([tx+27, cy-110, tx+27-15, cy-115], fill=(0x30,0x30,0x30), width=2)
+            draw.line([tx+27, cy-90, tx+27, cy-110], fill=(0x30,0x30,0x30), width=3)
+            draw.line([tx+27, cy-110, tx+27-15, cy-115], fill=(0x30,0x30,0x30), width=2)
         # Main explosion at center tank
         ex = x + w//2
         ey = cy - 80
         # Water reflection of fire
         for i in range(7):
             rx = ex + (i-3)*20
-            D.ellipse([rx-12, cy+5, rx+12, cy+30], fill=(0xFF,0x40,0x10))
+            draw.ellipse([rx-12, cy+5, rx+12, cy+30], fill=(0xFF,0x40,0x10))
         for r, color in [(40, (0xFF,0x20,0x00)), (32, (0xFF,0x60,0x10)), (22, (0xFF,0xA0,0x20)), (12, (0xFF,0xD0,0x60))]:
-            D.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
+            draw.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
         # Fire column rising
-        D.polygon([(ex-25, ey), (ex-12, y+5), (ex+12, y+5), (ex+25, ey)], fill=(0xFF,0x50,0x10))
+        draw.polygon([(ex-25, ey), (ex-12, y+5), (ex+12, y+5), (ex+25, ey)], fill=(0xFF,0x50,0x10))
         # Smoke plume - rising
         for i in range(10):
             sx = ex + (i%3-1)*12
             sy = ey - 30 - i*12
             sr = 15 + i*4
-            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x15,0x15,0x18))
+            draw.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x15,0x15,0x18))
         # Debris/sparks
         for i in range(20):
             dx = ex + (i%5-2)*18
             dy = ey - 10 - (i//5)*15
-            D.ellipse([dx-2, dy-2, dx+2, dy+2], fill=(0xFF,0xA0,0x30))
+            draw.ellipse([dx-2, dy-2, dx+2, dy+2], fill=(0xFF,0xA0,0x30))
         # Foreground: shoreline detail
         for sx in range(x, x+w, 8):
-            D.ellipse([sx-2, cy-2, sx+2, cy+2], fill=(0x50,0x40,0x30))
+            draw.ellipse([sx-2, cy-2, sx+2, cy+2], fill=(0x50,0x40,0x30))
         f_b = get_font("sans", 10, bold=True)
-        draw_text(cx, y+h-8, "BAHRAIN", f_b, (0xFF,0xC0,0xC0), anchor="mm")
+        draw_text_on_layer(draw, cx, y+h-8, "BAHRAIN", f_b, (0xFF,0xC0,0xC0), anchor="mm")
 
 for i, story in enumerate(lead_stories):
     draw_lead_panel(story, [y_lead1, y_lead2, y_lead3][i])
@@ -515,8 +527,11 @@ def draw_mid_card(story, x, y):
     f_mplace = get_font("sans", 8, bold=True)
     draw_text(text_x, y+3, story["place"], f_mplace, BLACK)
 
-    # Headline: smaller font (9pt), 3 lines max, full width
-    f_mhead = get_font("sans", 9, bold=True)
+    # Headline: 9pt for most, 8pt for cards 5 and 13 to fit full text
+    if story["num"] in (5, 13):
+        f_mhead = get_font("sans", 8, bold=True)
+    else:
+        f_mhead = get_font("sans", 9, bold=True)
     draw_text_wrapped(text_x, y+16, story["headline"], f_mhead, BLACK, text_w, 11, max_lines=3)
 
     # Deck: 1 line, complete clause
