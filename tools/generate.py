@@ -184,22 +184,28 @@ utc_events = [
     (6.0, "06:00", "Sparta II ablaze"),
     (9.0, "09:00", "Peru quake"),
     (12.0, "12:00", "Tankers hit Oman"),
-    (15.0, "15:00", "France seeks UN on Myanmar"),
+    (15.0, "15:00", "France seeks UN"),
     (19.0, "19:00", "Iran strikes Bahrain"),
-    (22.0, "22:00", "400 drones on Kyiv"),
+    (22.0, "22:00", "400 drones Kyiv"),
 ]
-rule_y = y_utc + 14
+# Moved down 6px for clearance from stat strip labels above
+rule_y = y_utc + 20
 D.line([PAD_X, rule_y, W - PAD_X, rule_y], fill=NAVY, width=2)
 f_utc_label = get_font("sans", 7)
 draw_text(PAD_X, rule_y - 12, "00:00 UTC", f_utc_label, NAVY, anchor="lm")
 draw_text(W - PAD_X, rule_y - 12, "24:00 UTC", f_utc_label, NAVY, anchor="rm")
 f_utc_time = get_font("sans", 7, bold=True)
 f_utc_desc = get_font("sans", 6)
-for hour, time_label, desc in utc_events:
+for idx, (hour, time_label, desc) in enumerate(utc_events):
     x = PAD_X + int((hour / 24.0) * (W - 2*PAD_X))
     D.ellipse([x-2, rule_y-2, x+2, rule_y+2], fill=RED)
-    draw_text(x, rule_y - 16, time_label, f_utc_time, RED, anchor="mm")
-    draw_text(x, rule_y + 6, desc, f_utc_desc, DARK_GREY, anchor="mt", max_width=100)
+    # Stagger time labels: even indices above, odd below
+    if idx % 2 == 0:
+        draw_text(x, rule_y - 16, time_label, f_utc_time, RED, anchor="mm")
+        draw_text(x, rule_y - 28, desc, f_utc_desc, DARK_GREY, anchor="mb", max_width=90)
+    else:
+        draw_text(x, rule_y + 16, time_label, f_utc_time, RED, anchor="mm")
+        draw_text(x, rule_y + 28, desc, f_utc_desc, DARK_GREY, anchor="mt", max_width=90)
 
 # ═══════════════════════════════════════════════════════════════
 # 6. REGION TAB BAR
@@ -312,7 +318,7 @@ def draw_lead_panel(story, y_top):
 def draw_illustration(type_, x, y, w, h):
     cx, cy = x + w//2, y + h//2
     if type_ == "climate":
-        # Conference hall: rows of seats, podium, globe projection
+        # Conference hall: rows of seats, podium, LARGE globe projection filling width
         D.rectangle([x, y, x+w, y+h], fill=(0xF0,0xF4,0xF8))
         # Seats - simplified
         for row in range(3):
@@ -322,19 +328,20 @@ def draw_illustration(type_, x, y, w, h):
                 D.rounded_rectangle([sx-6, ry-8, sx+6, ry], radius=1, fill=(0xD0,0xDC,0xE8), outline=(0xA0,0xB8,0xD0))
         # Podium
         D.rectangle([cx-30, y+h-40, cx+30, y+h-20], fill=(0x70,0x80,0x90))
-        # Globe on wall
-        D.ellipse([cx-45, y+10, cx+45, y+100], outline=(0x30,0x70,0xB0), width=2)
+        # LARGE Globe on wall - fills most of illustration width
+        globe_r = min(w, h) // 2 - 10
+        D.ellipse([cx-globe_r, cy-globe_r, cx+globe_r, cy+globe_r], outline=(0x30,0x70,0xB0), width=2)
         for lat in (-45, 0, 45):
-            ly = cy - 20 + (lat + 45) * 80 // 90
-            D.arc([cx-45, ly-3, cx+45, ly+3], 0, 360, fill=(0x30,0x70,0xB0), width=1)
+            ly = cy + lat * globe_r // 45
+            D.arc([cx-globe_r, ly-3, cx+globe_r, ly+3], 0, 360, fill=(0x30,0x70,0xB0), width=1)
         for lon in (-45, 0, 45):
-            lx = cx + lon * 45 // 45
-            D.arc([lx-1, y+10, lx+1, y+100], 0, 360, fill=(0x30,0x70,0xB0), width=1)
-        # COP31 banner
-        D.rectangle([cx-60, y+6, cx+60, y+22], fill=EUROPE_BLUE)
-        f_banner = get_font("sans", 9, bold=True)
-        draw_text(cx, y+14, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
-        
+            lx = cx + lon * globe_r // 45
+            D.arc([lx-1, cy-globe_r, lx+1, cy+globe_r], 0, 360, fill=(0x30,0x70,0xB0), width=1)
+        # COP31 banner at top
+        D.rectangle([cx-80, y+6, cx+80, y+24], fill=EUROPE_BLUE)
+        f_banner = get_font("sans", 10, bold=True)
+        draw_text(cx, y+15, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
+
     elif type_ == "drones":
         # Night sky over Kyiv
         D.rectangle([x, y, x+w, y+h], fill=(0x0A,0x12,0x25))
@@ -352,37 +359,57 @@ def draw_illustration(type_, x, y, w, h):
                 for wx in range(bx+3, bx+bw-3, 10):
                     if (wx + wy) % 4 == 0:
                         D.rectangle([wx, wy, wx+3, wy+5], fill=(0xFF,0xD8,0x70))
-        # Drone swarm
-        for i in range(18):
-            dx = x + 15 + (i % 6) * (w-30)//5
-            dy = y + 20 + (i // 6) * (h-60)//2
-            D.polygon([(dx, dy), (dx-4, dy+8), (dx+4, dy+8)], fill=(0xFF,0x30,0x30))
-            D.line([dx, dy+8, dx, dy+14], fill=(0xFF,0x50,0x50), width=1)
+        # Drone swarm - REDUCED count, kept away from center caption area
+        for i in range(12):
+            dx = x + 15 + (i % 4) * (w-30)//3
+            dy = y + 15 + (i // 4) * (h-70)//2
+            D.polygon([(dx, dy), (dx-3, dy+6), (dx+3, dy+6)], fill=(0xFF,0x30,0x30))
+            D.line([dx, dy+6, dx, dy+10], fill=(0xFF,0x50,0x50), width=1)
+        # LIGHT smoke trails - smaller, not covering skyline or caption
+        for i in range(4):
+            sx = x + 20 + i * (w-40)//3
+            sy = y + h - 30 - (i%2)*8
+            D.ellipse([sx-8, sy-4, sx+8, sy+4], fill=(0x20,0x20,0x30))
         f_k = get_font("sans", 10, bold=True)
         draw_text(cx, y+h-8, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
         
     elif type_ == "explosion":
-        # Bahrain coast
-        D.rectangle([x, cy, x+w, y+h], fill=(0x15,0x30,0x50))
-        for wx in range(0, w, 25):
-            D.arc([x+wx, cy-8, x+wx+25, cy+8], 0, 180, fill=(0x20,0x48,0x78), width=1)
+        # Bahrain coast - FULL panel filled with burning base/coastline scene
+        # Sky
+        D.rectangle([x, y, x+w, cy], fill=(0x15,0x25,0x45))
+        # Water - animated waves
+        for wx in range(0, w, 20):
+            D.arc([x+wx, cy-10, x+wx+20, cy+10], 0, 180, fill=(0x10,0x30,0x55), width=1)
         D.line([x, cy, x+w, cy], fill=(0x7B,0x60,0x40), width=2)
-        # Tanks
-        tank_x = x + w//4
-        for tx in [tank_x, tank_x+90, tank_x+180]:
-            D.rectangle([tx, cy-60, tx+50, cy], fill=(0x50,0x50,0x50), outline=(0x30,0x30,0x30))
-            D.ellipse([tx, cy-70, tx+50, cy-50], fill=(0x60,0x60,0x60), outline=(0x30,0x30,0x30))
-        # Explosion
-        ex = tank_x + 90 + 25
-        ey = cy - 60
-        for r, color in [(30, (0xFF,0x20,0x00)), (22, (0xFF,0x70,0x10)), (14, (0xFF,0xB0,0x20)), (7, (0xFF,0xE0,0x80))]:
+        # Tanks/storage facilities along coast
+        tank_x = x + 20
+        for tx in [tank_x, tank_x+85, tank_x+170, tank_x+255]:
+            D.rectangle([tx, cy-70, tx+55, cy], fill=(0x40,0x40,0x45), outline=(0x25,0x25,0x25))
+            D.ellipse([tx, cy-80, tx+55, cy-60], fill=(0x50,0x50,0x55), outline=(0x25,0x25,0x25))
+            # Tank details
+            D.rectangle([tx+10, cy-75, tx+45, cy-65], fill=(0x60,0x60,0x65))
+        # Main explosion at center tank
+        ex = x + w//2
+        ey = cy - 70
+        # Water reflection of fire
+        for i in range(5):
+            rx = ex + (i-2)*25
+            D.ellipse([rx-15, cy+5, rx+15, cy+35], fill=(0xFF,0x40,0x10))
+        for r, color in [(35, (0xFF,0x20,0x00)), (28, (0xFF,0x60,0x10)), (18, (0xFF,0xA0,0x20)), (10, (0xFF,0xD0,0x60))]:
             D.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
-        # Smoke
-        for i in range(6):
-            sx = ex + (i%3-1)*12
-            sy = ey - 22 - i*12
-            sr = 10 + i*2
-            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x30,0x30,0x30))
+        # Fire column rising
+        D.polygon([(ex-20, ey), (ex-10, y+10), (ex+10, y+10), (ex+20, ey)], fill=(0xFF,0x50,0x10))
+        # Smoke plume - rising but not covering caption area
+        for i in range(8):
+            sx = ex + (i%3-1)*10
+            sy = ey - 25 - i*10
+            sr = 12 + i*3
+            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x20,0x20,0x25))
+        # Debris/sparks
+        for i in range(15):
+            dx = ex + (i%5-2)*15
+            dy = ey - 10 - (i//5)*12
+            D.ellipse([dx-2, dy-2, dx+2, dy+2], fill=(0xFF,0xA0,0x30))
         f_b = get_font("sans", 10, bold=True)
         draw_text(cx, y+h-8, "BAHRAIN", f_b, (0xFF,0xC0,0xC0), anchor="mm")
 
@@ -444,23 +471,29 @@ def draw_mid_card(story, x, y):
     D.rounded_rectangle([tx, y+4, tx+tag_w, y+18], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
     draw_text(tx + tag_w//2, y+11, tag_text, f_mtag, story["tag_color"], anchor="mm")
     
+    # Number circle: place AFTER the tag, with gap
     f_mnum = get_font("sans", 11, bold=True)
-    cx = tx + 10
-    cy = y + 35
-    D.ellipse([cx-10, cy-10, cx+10, cy+10], outline=RED, width=2)
-    draw_text(cx, cy, str(story["num"]), f_mnum, RED, anchor="mm")
+    num_cx = tx + tag_w + 16  # after tag + gap
+    num_cy = y + 35
+    D.ellipse([num_cx-10, num_cy-10, num_cx+10, num_cy+10], outline=RED, width=2)
+    draw_text(num_cx, num_cy, str(story["num"]), f_mnum, RED, anchor="mm")
+    
+    # Text starts after number circle
+    text_x = num_cx + 14
+    text_w = x + card_w - 6 - text_x
     
     f_mplace = get_font("sans", 9, bold=True)
-    draw_text(tx + 24, y+4, story["place"], f_mplace, BLACK)
+    draw_text(text_x, y+4, story["place"], f_mplace, BLACK)
     
     f_mhead = get_font("sans", 11, bold=True)
-    draw_text_wrapped(tx + 24, y+19, story["headline"], f_mhead, BLACK, tw - 24, 13, max_lines=1)
+    # Allow 2 lines for headline, 1 for deck
+    draw_text_wrapped(text_x, y+19, story["headline"], f_mhead, BLACK, text_w, 13, max_lines=2)
     
     f_mdeck = get_font("sans", 9)
-    draw_text_wrapped(tx + 24, y+33, story["deck"], f_mdeck, DARK_GREY, tw - 24, 12, max_lines=1)
+    draw_text_wrapped(text_x, y+42, story["deck"], f_mdeck, DARK_GREY, text_w, 12, max_lines=1)
     
     f_msrc = get_font("sans", 8, italic=True)
-    draw_text(tx + 24, y+46, story["source"], f_msrc, MED_GREY)
+    draw_text(text_x, y+55, story["source"], f_msrc, MED_GREY)
 
 def draw_mid_illustration(type_, x, y, w, h):
     cx, cy = x + w//2, y + h//2
@@ -555,21 +588,22 @@ for row in range(2):
         draw_mid_card(mid_stories[idx], x_card, y_row)
 
 # ═══════════════════════════════════════════════════════════════
-# 9. BOTTOM SECTION: Map (left) + 22 stories (right)
+# 9. BOTTOM SECTION: Map (left) + 22 stories (right, 2 columns)
 # ═══════════════════════════════════════════════════════════════
 bottom_y = y_bottom
 bottom_h = 140
-map_w = 360
+map_w = 400
 stories_x = PAD_X + map_w + 12
+stories_w = W - PAD_X - stories_x
 
 D.rectangle([PAD_X, bottom_y, PAD_X+map_w, bottom_y+bottom_h], fill=(0xF5,0xF5,0xF0), outline=(0xDD,0xDD,0xDD), width=1)
-f_map_title = get_font("sans", 10, bold=True)
-draw_text(PAD_X + map_w//2, bottom_y + 12, "WHERE IT HAPPENED - pins match story numbers", f_map_title, BLACK, anchor="mt")
+f_map_title = get_font("sans", 9, bold=True)
+draw_text(PAD_X + map_w//2, bottom_y + 10, "WHERE IT HAPPENED - pins match story numbers", f_map_title, BLACK, anchor="mt")
 
 map_cx = PAD_X + map_w // 2
-map_cy = bottom_y + 18 + (bottom_h - 36) // 2
-map_rx = map_w * 0.4
-map_ry = (bottom_h - 36) * 0.4
+map_cy = bottom_y + 16 + (bottom_h - 32) // 2
+map_rx = map_w * 0.45
+map_ry = (bottom_h - 32) * 0.48
 
 continents = [
     [(-0.8, 0.4), (-0.7, 0.35), (-0.6, 0.3), (-0.5, 0.25), (-0.7, 0.45), (-0.65, 0.5)],
@@ -596,10 +630,37 @@ def latlon_to_map(lat, lon):
     ny = -lat / 90.0
     return map_cx + nx * map_rx, map_cy + ny * map_ry
 
-f_pin_num = get_font("sans", 7, bold=True)
+# Compute pin positions with collision avoidance
+pin_positions = []
 for num, lat, lon in story_pins:
     px, py = latlon_to_map(lat, lon)
-    D.ellipse([px-6, py-6, px+6, py+6], fill=RED, outline=WHITE, width=1)
+    pin_positions.append([num, px, py])
+
+# Simple collision avoidance: nudge overlapping pins
+pin_radius = 8
+for i in range(len(pin_positions)):
+    for j in range(i+1, len(pin_positions)):
+        num_i, px_i, py_i = pin_positions[i]
+        num_j, px_j, py_j = pin_positions[j]
+        dx = px_j - px_i
+        dy = py_j - py_i
+        dist = (dx*dx + dy*dy)**0.5
+        min_dist = pin_radius * 2.5
+        if dist < min_dist and dist > 0:
+            # Nudge apart
+            nx, ny = dx/dist, dy/dist
+            push = (min_dist - dist) / 2
+            pin_positions[i][1] -= nx * push
+            pin_positions[i][2] -= ny * push
+            pin_positions[j][1] += nx * push
+            pin_positions[j][2] += ny * push
+
+f_pin_num = get_font("sans", 7, bold=True)
+for num, px, py in pin_positions:
+    # Clamp to map bounds
+    px = max(PAD_X + pin_radius, min(PAD_X + map_w - pin_radius, px))
+    py = max(bottom_y + 20 + pin_radius, min(bottom_y + bottom_h - pin_radius, py))
+    D.ellipse([px-pin_radius, py-pin_radius, px+pin_radius, py+pin_radius], fill=RED, outline=WHITE, width=1)
     draw_text(px, py, str(num), f_pin_num, WHITE, anchor="mm")
 
 more_stories = [
@@ -627,16 +688,21 @@ more_stories = [
     "35 Football: Liverpool host Manchester United today (Al Jazeera)",
 ]
 
-f_section = get_font("sans", 10, bold=True)
-draw_text(stories_x, bottom_y + 12, "ALSO ON SUNDAY 22 NOVEMBER - 22 MORE STORIES", f_section, BLACK)
+f_section = get_font("sans", 9, bold=True)
+draw_text(stories_x, bottom_y + 10, "ALSO ON SUNDAY 22 NOVEMBER - 22 MORE STORIES", f_section, BLACK)
 
-f_more = get_font("sans", 8)
-line_h = 12
+f_more = get_font("sans", 7)
+line_h = 10
+col_w = stories_w // 2 - 4
+items_per_col = 11
 for i, story in enumerate(more_stories):
-    ty = bottom_y + 28 + i * line_h
+    col = i // items_per_col
+    row = i % items_per_col
+    tx = stories_x + col * (col_w + 8)
+    ty = bottom_y + 24 + row * line_h
     if ty + line_h > bottom_y + bottom_h - 2:
         break
-    draw_text(stories_x, ty, story, f_more, DARK_GREY)
+    draw_text(tx, ty, story, f_more, DARK_GREY, max_width=col_w)
 
 # ═══════════════════════════════════════════════════════════════
 # 10. DATE CHECK BOX
