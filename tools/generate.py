@@ -185,10 +185,10 @@ y_date_headline = y_masthead_top + 40
 f_masthead = get_font("serif", 42, bold=True)
 draw_text(W//2, y_date_headline + 15, "Sunday 22 November 2026", f_masthead, BLACK, anchor="mm")
 
-# Red italic subhead naming the 3 lead stories
+# Red italic subhead naming the 3 lead stories - spaced middots per fix brief
 y_sub_kicker = y_masthead_top + 110
 f_sub = get_font("sans", 13, italic=True)
-draw_text(W//2, y_sub_kicker + 6, "COP31 final text lands at dawn \u2014 Iran claims strikes on US bases in Bahrain \u2014 Russia launches 186 drones at Ukraine", f_sub, RED, anchor="mm")
+draw_text(W//2, y_sub_kicker + 6, "COP31 final text lands at dawn \u00b7 Iran claims strikes on US bases in Bahrain \u00b7 Russia launches 186 drones at Ukraine", f_sub, RED, anchor="mm")
 
 # ═══════════════════════════════════════════════════════════════
 # 2. STAT STRIP (y 150–210)
@@ -291,7 +291,7 @@ lead_stories = [
         "num": 3, "place": "KYIV, UKRAINE", "tag": "REPORTED", "kicker": "OVERNIGHT BARRAGE",
         "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
         "headline": "Russia launches 186 drones overnight; air defence downs 161 by 08:00",
-        "deck": "72 jet-powered Shahed plus decoys; 56 of 72 jet-powered downed; impacts at 18 locations; building destroyed in Dymar; three hurt in Zaporizhzhia",
+        "deck": "72 jet-powered Shahed plus decoys; 161 downed; impacts at 18 locations.",
         "source": "(Al Jazeera, BBC)", "stat": "186 drones fired", "illustration": "kyiv",
     },
 ]
@@ -479,7 +479,7 @@ for i, story in enumerate(lead_stories):
     panel_ill = cont_layer.crop((crop_x, 0, crop_x + panel_w, ill_h))
     # Paste at exact panel position - CLIPPED to panel bounds
     IMG.paste(panel_ill, (PAD_X, ill_y), panel_ill)
-    
+
     # Caption bottom-left of illustration area
     f_caption = get_font("sans", 8, italic=True)
     captions = {
@@ -488,23 +488,23 @@ for i, story in enumerate(lead_stories):
         "kyiv": "Night sky over Kyiv, drone swarm incoming",
     }
     draw_text(PAD_X + 6, ill_y + ill_h - 2, captions[story["illustration"]], f_caption, MED_GREY, anchor="lb")
-    
+
     # Right column text
     f_lead_num = get_font("sans", 18, bold=True)
     f_lead_place = get_font("sans", 10, bold=True)
     f_lead_headline = get_font("sans", 14, bold=True)
     f_lead_deck = get_font("sans", 11)
     f_lead_source = get_font("sans", 9, italic=True)
-    
-    ty = panel_y + 10
+
+    ty = panel_y + 8
     draw_text(text_x, ty, str(story["num"]), f_lead_num, RED)
-    ty += 22
+    ty += 20
     draw_text(text_x, ty, story["place"], f_lead_place, BLACK)
-    ty += 16
-    draw_text_wrapped(text_x, ty, story["headline"], f_lead_headline, BLACK, text_w, 18, max_lines=2)
-    ty += 36
-    draw_text_wrapped(text_x, ty, story["deck"], f_lead_deck, DARK_GREY, text_w, 14, max_lines=2)
-    ty += 28
+    ty += 14
+    draw_text_wrapped(text_x, ty, story["headline"], f_lead_headline, BLACK, text_w, 16, max_lines=2)
+    ty += 32
+    draw_text_wrapped(text_x, ty, story["deck"], f_lead_deck, DARK_GREY, text_w, 12, max_lines=2)
+    ty += 24
     draw_text(text_x, ty, story["source"], f_lead_source, MED_GREY)
 
     # ════════════════════════════════════════════════════════════════
@@ -512,44 +512,44 @@ for i, story in enumerate(lead_stories):
     # ════════════════════════════════════════════════════════════════
     mid_stories = [
     {"num": 4, "place": "HONG KONG", "tag": "ELECTION", "tag_color": ASIA_ORANGE, "tag_bg": TAG_ORANGE,
-     "headline": "Hong Kong elects Election Committee: 856 candidates for 723 seats",
-     "deck": "Turnout reaches 93.55% by 14:00; only patriots allowed to run",
+     "headline": "Hong Kong elects Election Committee",
+     "deck": "856 candidates, 723 seats; turnout 93.55%",
      "source": "(SCMP)", "illustration": "hk_vote"},
     {"num": 5, "place": "LAS VEGAS, USA", "tag": "SPORT", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
-     "headline": "Verstappen wins Las Vegas GP; fourth title sealed",
-     "deck": "Red Bull driver dominates; Russell second, Gasly third",
+     "headline": "Verstappen wins Las Vegas GP",
+     "deck": "Red Bull driver takes the win",
      "source": "(BBC)", "illustration": "f1"},
     {"num": 6, "place": "WELLINGTON, NZ", "tag": "CRICKET", "tag_color": OCEANIA_TEAL, "tag_bg": TAG_TEAL,
-     "headline": "India declare 720/9 \u2014 highest Test total in New Zealand",
-     "deck": "Jaiswal 190, Sharma 131; NZ trail by 483 at stumps day 2",
+     "headline": "India declare 720/9",
+     "deck": "Record total in New Zealand",
      "source": "(ESPNcricinfo)", "illustration": "cricket"},
     {"num": 7, "place": "BAYELSA, NIGERIA", "tag": "DISASTER", "tag_color": AFRICA_BROWN, "tag_bg": TAG_BROWN,
-     "headline": "Boat carrying mourners capsizes; death toll rises to 26",
-     "deck": "Overloaded vessel hit by waves; rescue operations ongoing",
+     "headline": "Boat carrying mourners capsizes",
+     "deck": "Overloaded vessel; toll rises to 26",
      "source": "(DW, Al Jazeera)", "illustration": "boat"},
     {"num": 8, "place": "TEHRAN, IRAN", "tag": "POWER", "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
-     "headline": "Iran starts electricity rationing: two-hour daily cuts",
-     "deck": "War damage to energy network forces rolling blackouts nationwide",
+     "headline": "Iran starts electricity rationing",
+     "deck": "Two-hour daily cuts begin",
      "source": "(Straits Times)", "illustration": "power"},
     {"num": 9, "place": "SINALOA, MEXICO", "tag": "CARTEL", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
-     "headline": "'El Chapo Isidro' caught in Sinaloa after shootout",
-     "deck": "FBI top-ten fugitive Ismael Zambada Sicairos captured by marines",
+     "headline": "'El Chapo Isidro' caught",
+     "deck": "FBI top-ten fugitive held",
      "source": "(Reuters)", "illustration": "arrest"},
     {"num": 10, "place": "GAZA", "tag": "AID STRIKE", "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
-     "headline": "Hamas seeks urgent talks after aid vehicle strike",
-     "deck": "Three Palestinians killed in air attack on food convoy; mediators press for pause",
+     "headline": "Hamas seeks urgent talks",
+     "deck": "Three die in Gaza aid strike",
      "source": "(Al Jazeera)", "illustration": "aid"},
     {"num": 11, "place": "MERCURY ORBIT", "tag": "SPACE", "tag_color": WORLD_PURPLE, "tag_bg": TAG_PURPLE,
-     "headline": "BepiColombo enters Mercury orbit after eight-year journey",
-     "deck": "ESA/JAXA mission begins science phase; first European orbiter at Mercury",
+     "headline": "BepiColombo enters Mercury orbit",
+     "deck": "Eight-year trip ends at Mercury",
      "source": "(ESA)", "illustration": "space"},
     {"num": 12, "place": "WASHINGTON, USA", "tag": "TECH", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
-     "headline": "Nvidia faces SEC accounting probe; inquiry at early stage",
-     "deck": "Regulator examines revenue recognition; shares dip in pre-market",
+     "headline": "Nvidia faces SEC accounting probe",
+     "deck": "Regulator examines accounts",
      "source": "(FT)", "illustration": "probe"},
-    {"num": 13, "place": "BRASILIA, BRAZIL", "tag": "HEALTH", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
-     "headline": "Bolsonaro in intensive care with bowel obstruction",
-     "deck": "Former president stable, breathing unassisted; surgery not ruled out",
+    {"num": 13, "place": "BRASÍLIA, BRAZIL", "tag": "HEALTH", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
+     "headline": "Bolsonaro in intensive care",
+     "deck": "Ex-president stable in care",
      "source": "(Al Jazeera)", "illustration": "hospital"},
 ]
 
@@ -840,29 +840,30 @@ for num, px, py in pin_positions:
     draw_text(px, py, str(num), f_pin_num, WHITE, anchor="mm")
 
 # ─── ALSO ON list - 22 items (14-35) from TOP-1 proven winner, reworded ───
+# Duplicates removed, wording fixed, all lines shortened to fit column width
 more_stories = [
     "14 Russian cargo ship still burning off Finland (Reuters)",
-    "15 World court: Myanmar committed genocide against the Rohingya (Guardian)",
+    "15 World court: Myanmar genocide ruling (Guardian)",
     "16 EU and Indonesia sign landmark trade deal (DW)",
     "17 Marles rejects US report on AUKUS subs (ABC)",
     "18 Sudan army retakes ~30 towns in Kordofan (Reuters)",
-    "19 Estonia to shut its Russia border from 1 Dec (Reuters)",
+    "19 Estonia to shut Russia border from 1 Dec (Reuters)",
     "20 Nepal PM lands in Delhi on first state visit (IANS)",
-    "21 Denmark expels Russian attaché over spy plot (Guardian)",
-    "22 ICE arrests on Seattle jet bridge (UPI)",
-    "23 DR Congo: Cantine attack, 40 killed (local officials)",
-    "24 Lebanon: Aoun demands Israel withdrawal (Al Jazeera)",
-    "25 Football: Liverpool host Manchester United today (Al Jazeera)",
-    "26 Tennis: Zverev v Alcaraz in the ATP Finals (ATP)",
-    "27 Chisinau: Moldova reports Russian airspace breach by drone (Kyiv Independent)",
-    "28 Brussels: Belgium air traffic to halt for 23 Nov national strike (Straits Times)",
-    "29 Berlin: IG Metall widens strikes at car and shipyard plants (Reuters)",
-    "30 Lisbon: Thousands march over cost-of-living crisis (Reuters)",
-    "31 Copenhagen: Denmark expels Russian attache over alleged rapper plot (Guardian)",
-    "32 Dhaka: 30 Awami League homes set ablaze in retaliatory attacks (Times of India)",
-    "33 Sydney: Fred Nile, former NSW MP and Christian leader, dies at 92 (ABC)",
-    "34 Melbourne: Bystanders pull driver from burning car on freeway (ABC)",
-    "35 Melbourne: 70th anniversary of 1956 Olympics opening ceremony (ABC)",
+    "21 ICE arrests on Seattle jet bridge (UPI)",
+    "22 DR Congo: Cantine attack, 40 killed (local officials)",
+    "23 Lebanon: Aoun demands Israel withdrawal (Al Jazeera)",
+    "24 Football: Liverpool host Man United today (Al Jazeera)",
+    "25 Tennis: Zverev v Alcaraz in ATP Finals (ATP)",
+    "26 Chisinau: Moldova reports Russian drone breach (Kyiv Independent)",
+    "27 Copenhagen: Denmark expels Russian attaché over spy plot (Guardian)",
+    "28 Brussels: Belgium air traffic halt for 23 Nov strike (Straits Times)",
+    "29 Melbourne: 70th anniversary of 1956 Olympics opening (ABC)",
+    "30 Berlin: IG Metall widens strikes at car plants (Reuters)",
+    "31 Lisbon: Thousands march over cost-of-living crisis (Reuters)",
+    "32 Dhaka: 30 Awami League homes set ablaze (Times of India)",
+    "33 Sydney: Fred Nile, former NSW MP, dies at 92 (ABC)",
+    "34 Kryvyi Rih missile: 2 dead, 58 hurt (BBC)",
+    "35 Saudi downs Houthi missile aimed at Riyadh (Anadolu)",
 ]
 
 f_section = get_font("sans", 9, bold=True)
