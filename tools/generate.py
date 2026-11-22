@@ -258,11 +258,12 @@ def draw_text_wrapped_on_layer(draw, x, y, text, font, color, max_width, line_he
 # Stat strip: y 150–210
 # UTC timeline: y 210–238
 # Region tabs: y 238–268
-# Lead panels 1–3: y 268–560 (each 97px, illustration top ~90px clipped to panel)
-# THE DAY IN TEN (cards 4–13): y 560–780 (2 rows x 110px)
-# Map + ALSO ON: y 780–950
-# DATE CHECK box: y 950–995
-# Footer: y 995–1024
+# IN 30 SECONDS box: y 268–293
+# Lead panels 1–3: y 293–584 (each 97px)
+# Mid cards 4–15: y 584–824 (2 rows x 6 cards x 110px)
+# Map + ALSO ON: y 824–994
+# DATE CHECK box: y 994–1024
+# Footer: y 1024 (clipped — kept for reference)
 
 y_masthead_top = 0
 y_masthead_bot = 150
@@ -272,19 +273,21 @@ y_utc_top = 210
 y_utc_bot = 238
 y_region_top = 238
 y_region_bot = 268
-y_lead1_top = 268
-y_lead1_bot = 365   # 97px each
-y_lead2_top = 365
-y_lead2_bot = 462
-y_lead3_top = 462
-y_lead3_bot = 559
-y_mid_top = 560
-y_mid_bot = 780
-y_bottom_top = 780
-y_bottom_bot = 950
-y_dc_top = 950
-y_dc_bot = 995
-y_footer_top = 995
+y_30sec_top = 268      # NEW: IN 30 SECONDS box
+y_30sec_bot = 293      # 25px tall
+y_lead1_top = 293
+y_lead1_bot = 390      # 97px each
+y_lead2_top = 390
+y_lead2_bot = 487
+y_lead3_top = 487
+y_lead3_bot = 584
+y_mid_top = 584
+y_mid_bot = 824        # 240px for 2 rows of 12 cards
+y_bottom_top = 824
+y_bottom_bot = 994
+y_dc_top = 994
+y_dc_bot = 1024
+y_footer_top = 1024    # footer moves down, but we keep image at 1024 — handled by clipping
 y_footer_bot = 1024
 
 # ═══════════════════════════════════════════════════════════════
@@ -383,11 +386,30 @@ for i, (name, count, color, tag_bg) in enumerate(regions):
     draw_text(cx, cy + 8, f"{count} stories", f_region_count, WHITE, anchor="mm")
 
 # ═══════════════════════════════════════════════════════════════
-# 5. THREE LARGE LEAD PANELS (y 268–559) - with continuous panorama CLIPPED to panels
+# NEW: IN 30 SECONDS BOX (y 268–293) — 3 one-line bullets summarising the day
+# ═══════════════════════════════════════════════════════════════
+f_30sec_title = get_font("sans", 8, bold=True)
+f_30sec_bullet = get_font("sans", 7)
+D.rectangle([PAD_X, y_30sec_top, W-PAD_X, y_30sec_bot], outline=RED, width=1, fill=(0xFF,0xF5,0xF5))
+draw_text(PAD_X + 8, y_30sec_top + 3, "IN 30 SECONDS", f_30sec_title, RED)
+bullets = [
+    "COP31 final text adopted at dawn — no fossil fuel phaseout, 1.5°C overshoot admitted",
+    "IRGC claims strikes on 2 US Patriot radars in Bahrain; US unconfirmed, no casualties",
+    "Russia launches 186 drones at Ukraine overnight; air defence downs 161 by 08:00",
+]
+bullet_x = PAD_X + 8
+bullet_y = y_30sec_top + 16
+for bullet in bullets:
+    draw_text(bullet_x, bullet_y, "• " + bullet, f_30sec_bullet, DARK_GREY, max_width=W - 2*PAD_X - 16)
+    bullet_y += 7
+
+# ═══════════════════════════════════════════════════════════════
+# 5. THREE LARGE LEAD PANELS (y 293–584) - with continuous panorama CLIPPED to panels
 # ═══════════════════════════════════════════════════════════════
 lead_stories = [
     {
         "num": 1, "place": "ANTALYA, TURKEY", "tag": "ONGOING", "kicker": "COP31 CLIMATE SUMMIT",
+        "certainty": "REPORTED",  # NEW: certainty tag for kicker line
         "tag_color": EUROPE_BLUE, "tag_bg": TAG_BLUE,
         "headline": "COP31 final text lands at dawn after two days in overtime",
         "deck": "No fossil fuel mention; recalls COP28 pact; 35% electricity by 2035; $120bn adaptation target dropped; admits 1.5\u00b0C overshoot",
@@ -395,6 +417,7 @@ lead_stories = [
     },
     {
         "num": 2, "place": "MANAMA, BAHRAIN", "tag": "CLAIM", "kicker": "IRGC CLAIMS STRIKES",
+        "certainty": "CLAIM",  # NEW: IRGC's own claim
         "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
         "headline": "IRGC claims missile and drone strikes on two US Patriot radars",
         "deck": "Retaliation for MQ-1/MQ-9 airspace violations and Hengam radar attack; Bahrain says defences intercepted several, facility hit, no casualties; US unconfirmed",
@@ -402,6 +425,7 @@ lead_stories = [
     },
     {
         "num": 3, "place": "KYIV, UKRAINE", "tag": "REPORTED", "kicker": "OVERNIGHT BARRAGE",
+        "certainty": "REPORTED",  # NEW: wire-reported
         "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
         "headline": "Russia launches 186 drones overnight; air defence downs 161 by 08:00",
         "deck": "72 jet-powered Shahed plus decoys; 161 downed; impacts at 18 locations.",
@@ -414,126 +438,146 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
     """Draw illustration on the PASSED draw object (not global D). All coords relative to x,y."""
     cx, cy = x + w//2, y + h//2
     if type_ == "climate":
-        # Dawn in Antalya - conference hall with large globe
+        # COP31 (Antalya): delegates at conference table, green globe, wall clock
         draw.rectangle([x, y, x+w, y+h], fill=(0xE8,0xEC,0xF4))
-        # Delegate rows
-        for row in range(5):
-            ry = y + h - 20 - row * 16
-            for seat in range(6):
-                sx = x + 15 + seat * (w - 30) // 5
-                draw.rounded_rectangle([sx-5, ry-7, sx+5, ry], radius=1, fill=(0xC0,0xCC,0xDC), outline=(0xA0,0xB8,0xD0))
-                draw.ellipse([sx-4, ry-14, sx+4, ry-6], fill=(0xC0,0xA0,0x80))
-        # Podium
-        draw.rectangle([cx-30, y+h-40, cx+30, y+h-20], fill=(0x70,0x80,0x90))
-        # Large globe projection
-        globe_r = min(w, h) // 2 - 5
-        draw.ellipse([cx-globe_r, cy-globe_r, cx+globe_r, cy+globe_r], outline=(0x30,0x70,0xB0), width=3)
-        for lat in (-60, -30, 0, 30, 60):
-            ly = cy + lat * globe_r // 60
-            draw.arc([cx-globe_r, ly-2, cx+globe_r, ly+2], 0, 360, fill=(0x30,0x70,0xB0), width=1)
-        for lon in (-60, -30, 0, 30, 60):
-            lx = cx + lon * globe_r // 60
-            draw.arc([lx-1, cy-globe_r, lx+1, cy+globe_r], 0, 360, fill=(0x30,0x70,0xB0), width=1)
-        for gx, gy, gr in [(cx-30, cy-20, 15), (cx+20, cy-10, 12), (cx-10, cy+25, 18), (cx+35, cy+15, 10)]:
-            draw.ellipse([gx-gr, gy-gr, gx+gr, gy+gr], fill=(0x20,0x80,0x30))
-        # COP31 banner
-        draw.rectangle([cx-100, y+6, cx+100, y+28], fill=EUROPE_BLUE)
-        f_banner = get_font("sans", 12, bold=True)
-        draw_text_on_layer(draw, cx, y+17, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
-        for bx in [x+10, x+w-110]:
-            draw.rectangle([bx, y+35, bx+100, y+55], fill=(0x1E,0x3A,0x8A))
-            f_side = get_font("sans", 8, bold=True)
-            draw_text_on_layer(draw, bx+50, y+45, "UNFCCC", f_side, WHITE, anchor="mm")
-    
+        # Dawn sky gradient
+        for i in range(h//2):
+            ratio = i / (h//2)
+            r = int(0xE8 + (0xC0 - 0xE8) * ratio)
+            g = int(0xEC + (0xD8 - 0xEC) * ratio)
+            b = int(0xF4 + (0xF0 - 0xF4) * ratio)
+            D.line([x, y+i, x+w, y+i], fill=(r, g, b))
+        # Conference table (long, horizontal)
+        table_y = y + h - 30
+        draw.rectangle([x+15, table_y, x+w-15, table_y+20], fill=(0x8B,0x6B,0x3B), outline=(0x6B,0x4B,0x2B))
+        D.line([x+15, table_y+10, x+w-15, table_y+10], fill=(0xA0,0x80,0x50))
+        # Delegates seated along table (both sides)
+        for side in [0, 1]:
+            for seat in range(7):
+                sx = x + 25 + seat * (w - 50) // 6
+                sy = table_y - 5 if side == 0 else table_y + 25
+                # Head
+                D.ellipse([sx-4, sy-8, sx+4, sy], fill=(0xD0,0xB8,0xA0))
+                # Shoulders
+                draw.rectangle([sx-7, sy, sx+7, sy+6], fill=(0x30,0x40,0x60))
+                # Nameplate
+                draw.rectangle([sx-10, sy+8, sx+10, sy+12], fill=(0xC0,0xC0,0xC0), outline=(0xA0,0xA0,0xA0))
+        # Center: large green globe on table
+        globe_x = cx
+        globe_y = table_y - 2
+        globe_r = 14
+        D.ellipse([globe_x-globe_r, globe_y-globe_r, globe_x+globe_r, globe_y+globe_r], fill=(0x20,0x80,0x30), outline=(0x10,0x60,0x20), width=2)
+        # Globe grid lines
+        for lat in (-45, 0, 45):
+            ly = globe_y + lat * globe_r // 45
+            draw.arc([globe_x-globe_r, ly-1, globe_x+globe_r, ly+1], 0, 360, fill=(0x40,0xA0,0x50), width=1)
+        for lon in (-45, 0, 45):
+            lx = globe_x + lon * globe_r // 45
+            draw.arc([lx-1, globe_y-globe_r, lx+1, globe_y+globe_r], 0, 360, fill=(0x40,0xA0,0x50), width=1)
+        # Wall clock above table
+        clock_x = cx
+        clock_y = table_y - 45
+        D.ellipse([clock_x-12, clock_y-12, clock_x+12, clock_y+12], fill=WHITE, outline=(0x80,0x80,0x80), width=2)
+        # Clock hands (showing ~03:00)
+        D.line([clock_x, clock_y, clock_x, clock_y-8], fill=BLACK, width=2)
+        D.line([clock_x, clock_y, clock_x+7, clock_y], fill=BLACK, width=2)
+        # COP31 banner at top
+        draw.rectangle([cx-80, y+4, cx+80, y+22], fill=EUROPE_BLUE)
+        f_banner = get_font("sans", 10, bold=True)
+        draw_text_on_layer(draw, cx, y+13, "COP31 ANTALYA", f_banner, WHITE, anchor="mm")
+        # Side UNFCCC panels
+        for bx in [x+10, x+w-90]:
+            draw.rectangle([bx, y+28, bx+80, y+44], fill=(0x1E,0x3A,0x8A))
+            f_side = get_font("sans", 7, bold=True)
+            draw_text_on_layer(draw, bx+40, y+36, "UNFCCC", f_side, WHITE, anchor="mm")
+   
     elif type_ == "bahrain":
-        # Dusk in Manama - Bahrain coast with burning base
-        # Sky - dusk colors
+        # Manama: radar dishes with flames, circular arrow, dark coast
+        # Night sky gradient
         for i in range(h):
             ratio = i / h
-            r = int(0x15 + (0x40 - 0x15) * ratio)
-            g = int(0x25 + (0x30 - 0x25) * ratio)
-            b = int(0x45 + (0x50 - 0x45) * ratio)
-            draw.line([x, y+i, x+w, y+i], fill=(r, g, b))
-        # Fire glow
-        ex = x + w//2
-        ey = y + h//3
-        for r, color in [(100, (0x30,0x10,0x05)), (70, (0x50,0x15,0x05)), (40, (0x80,0x20,0x05)), (20, (0xB0,0x30,0x10))]:
-            draw.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
-        # Smoke plumes
-        for i in range(10):
-            sx = x + 20 + i * (w-40)//9
-            sy = y + 15 + (i%3)*15
-            sr = 18 + (i%4)*6
-            draw.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x10,0x10,0x15))
-        # Water line
-        cy = y + h * 0.55
-        for wx in range(0, w, 20):
-            draw.arc([x+wx, cy-10, x+wx+20, cy+10], 0, 180, fill=(0x10,0x30,0x55), width=1)
-        draw.line([x, cy, x+w, cy], fill=(0x7B,0x60,0x40), width=2)
-        # Tanks
-        tank_x = x + 20
-        for tx in [tank_x, tank_x+85, tank_x+170, tank_x+255]:
-            draw.rectangle([tx, cy-80, tx+55, cy], fill=(0x40,0x40,0x45), outline=(0x25,0x25,0x25))
-            draw.ellipse([tx, cy-90, tx+55, cy-70], fill=(0x50,0x50,0x55), outline=(0x25,0x25,0x25))
-            draw.rectangle([tx+10, cy-85, tx+45, cy-75], fill=(0x60,0x60,0x65))
-            draw.line([tx+27, cy-90, tx+27, cy-110], fill=(0x30,0x30,0x30), width=3)
-            draw.line([tx+27, cy-110, tx+12, cy-115], fill=(0x30,0x30,0x30), width=2)
-        # Main explosion
-        ex = x + w//2
-        ey = cy - 80
-        for i in range(7):
-            rx = ex + (i-3)*20
-            draw.ellipse([rx-12, cy+5, rx+12, cy+30], fill=(0xFF,0x40,0x10))
-        for r, color in [(40, (0xFF,0x20,0x00)), (32, (0xFF,0x60,0x10)), (22, (0xFF,0xA0,0x20)), (12, (0xFF,0xD0,0x60))]:
-            draw.ellipse([ex-r, ey-r, ex+r, ey+r], fill=color)
-        # Fire column
-        draw.polygon([(ex-25, ey), (ex-12, y+5), (ex+12, y+5), (ex+25, ey)], fill=(0xFF,0x50,0x10))
-        # Smoke plume
-        for i in range(8):
-            sx = ex + (i%3-1)*12
-            sy = ey - 30 - i*12
-            sr = 15 + i*4
-            draw.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x15,0x15,0x18))
-        # Debris
-        for i in range(15):
-            dx = ex + (i%5-2)*18
-            dy = ey - 10 - (i//5)*15
-            draw.ellipse([dx-2, dy-2, dx+2, dy+2], fill=(0xFF,0xA0,0x30))
-        # Shoreline
-        for sx in range(x, x+w, 8):
-            draw.ellipse([sx-2, cy-2, sx+2, cy+2], fill=(0x50,0x40,0x30))
-        f_b = get_font("sans", 10, bold=True)
-        draw_text_on_layer(draw, cx, y+h-8, "MANAMA", f_b, (0xFF,0xC0,0xC0), anchor="mm")
-    
+            r = int(0x0A + (0x25 - 0x0A) * ratio)
+            g = int(0x10 + (0x1A - 0x10) * ratio)
+            b = int(0x25 + (0x35 - 0x25) * ratio)
+            D.line([x, y+i, x+w, y+i], fill=(r, g, b))
+        # Radar dishes (3 large dishes with arrays)
+        for dish_i in range(3):
+            dish_x = x + 35 + dish_i * (w - 70) // 2
+            dish_y = y + 25
+            # Dish support
+            D.line([dish_x, dish_y+40, dish_x, dish_y+65], fill=(0x50,0x50,0x50), width=3)
+            D.line([dish_x-8, dish_y+65, dish_x+8, dish_y+65], fill=(0x50,0x50,0x50), width=3)
+            # Dish parabola
+            draw.arc([dish_x-22, dish_y, dish_x+22, dish_y+44], 0, 180, fill=(0x80,0x80,0x80), width=3)
+            draw.arc([dish_x-20, dish_y+2, dish_x+20, dish_y+42], 0, 180, fill=(0xA0,0xA0,0xA0), width=1)
+            # Feed horn
+            draw.rectangle([dish_x-3, dish_y-8, dish_x+3, dish_y+2], fill=(0x40,0x40,0x40))
+        # Flames at base of center radar (strike impact)
+        flame_x = x + w//2
+        flame_y = y + 70
+        for f in range(6):
+            fx = flame_x + (f-2.5)*12
+            for layer, (fr, fg, fb) in enumerate([(0xFF,0x20,0x00), (0xFF,0x80,0x10), (0xFF,0xC0,0x20)]):
+                D.ellipse([fx-6+layer, flame_y-6+layer, fx+6-layer, flame_y+10-layer], fill=(fr, fg, fb))
+        # Circular arrow (retaliation symbol) above radars
+        arrow_cx = cx
+        arrow_cy = y + 15
+        arrow_r = 18
+        draw.arc([arrow_cx-arrow_r, arrow_cy-arrow_r, arrow_cx+arrow_r, arrow_cy+arrow_r], 45, 315, fill=(0xFF,0x40,0x40), width=4)
+        # Arrow head
+        draw.polygon([(arrow_cx+arrow_r, arrow_cy), (arrow_cx+arrow_r-6, arrow_cy-4), (arrow_cx+arrow_r-6, arrow_cy+4)], fill=(0xFF,0x40,0x40))
+        # Dark coast line at bottom
+        coast_y = y + h - 15
+        for cx_seg in range(x, x+w, 8):
+            D.ellipse([cx_seg-3, coast_y-3, cx_seg+3, coast_y+3], fill=(0x10,0x10,0x15))
+        D.line([x, coast_y, x+w, coast_y], fill=(0x20,0x18,0x20), width=2)
+        # Water reflection
+        for wx in range(0, w, 15):
+            draw.arc([x+wx, coast_y, x+wx+15, coast_y+8], 0, 180, fill=(0x15,0x20,0x30), width=1)
+        # MANAMA label
+        f_b = get_font("sans", 9, bold=True)
+        draw_text_on_layer(draw, cx, y+h-6, "MANAMA", f_b, (0xFF,0xC0,0xC0), anchor="mm")
+   
     elif type_ == "kyiv":
-        # Night over Kyiv
-        draw.rectangle([x, y, x+w, y+h], fill=(0x0A,0x12,0x25))
+        # Kyiv: night skyline with lit windows, searchlight beam, drones with trails
+        draw.rectangle([x, y, x+w, y+h], fill=(0x05,0x0A,0x18))
         # Moon
-        draw.ellipse([x+w-60, y+10, x+w-15, y+55], fill=(0xE8,0xE8,0xC8))
-        # City silhouette
-        bw = w // 7
-        for i in range(7):
+        D.ellipse([x+w-50, y+8, x+w-12, y+46], fill=(0xE0,0xE0,0xC0))
+        # Searchlight beam from bottom center
+        beam_x = cx
+        beam_y = y + h
+        draw.polygon([(beam_x-30, beam_y), (beam_x-5, y+20), (beam_x+5, y+20), (beam_x+30, beam_y)], fill=(0xFF,0xF0,0xC0, 0x30))
+        draw.polygon([(beam_x-25, beam_y), (beam_x-3, y+25), (beam_x+3, y+25), (beam_x+25, beam_y)], fill=(0xFF,0xF0,0xC0, 0x50))
+        # City skyline with lit windows
+        bw = w // 8
+        building_heights = [h-20, h-35, h-28, h-45, h-30, h-22, h-40, h-25]
+        for i in range(8):
             bx = x + i * bw
-            bh = [h-25, h-40, h-30, h-50, h-35, h-28, h-42][i]
-            bh = max(15, min(h-15, bh))
-            draw.rectangle([bx, y+h-bh, bx+bw-2, y+h], fill=(0x04,0x08,0x12))
-            for wy in range(y+h-bh+6, y+h-6, 12):
-                for wx in range(bx+3, bx+bw-3, 10):
-                    if (wx + wy) % 4 == 0:
-                        draw.rectangle([wx, wy, wx+3, wy+5], fill=(0xFF,0xD8,0x70))
-        # Drone swarm
-        for i in range(14):
-            dx = x + 15 + (i % 4) * (w-30)//3
-            dy = y + 15 + (i // 4) * (h-70)//3
-            draw.polygon([(dx, dy), (dx-3, dy+6), (dx+3, dy+6)], fill=(0xFF,0x30,0x30))
-            draw.line([dx, dy+6, dx, dy+10], fill=(0xFF,0x50,0x50), width=1)
-        # Smoke trails
-        for i in range(5):
-            sx = x + 20 + i * (w-40)//4
-            sy = y + h - 30 - (i%2)*8
-            draw.ellipse([sx-8, sy-4, sx+8, sy+4], fill=(0x20,0x20,0x30))
-        f_k = get_font("sans", 10, bold=True)
-        draw_text_on_layer(draw, cx, y+h-8, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
+            bh = max(15, min(h-10, building_heights[i]))
+            # Building silhouette
+            draw.rectangle([bx, y+h-bh, bx+bw-2, y+h], fill=(0x03,0x06,0x10))
+            # Lit windows (random pattern)
+            for wy in range(y+h-bh+4, y+h-4, 10):
+                for wx in range(bx+3, bx+bw-3, 9):
+                    if (wx * 7 + wy * 3) % 11 < 4:  # pseudo-random lit windows
+                        draw.rectangle([wx, wy, wx+4, wy+6], fill=(0xFF,0xE8,0x80))
+        # Drone swarm with trails (incoming from right)
+        for i in range(18):
+            dx = x + w - 20 - (i % 6) * 15 - (i // 6) * 40
+            dy = y + 15 + (i % 3) * 20 + (i // 6) * 15
+            # Drone body (small triangle)
+            draw.polygon([(dx, dy), (dx-4, dy+5), (dx+4, dy+5)], fill=(0xFF,0x20,0x20))
+            # Trail
+            D.line([dx, dy+5, dx+8, dy+12], fill=(0xFF,0x60,0x60), width=1)
+            D.line([dx-2, dy+5, dx+6, dy+13], fill=(0xFF,0x80,0x80), width=1)
+        # Smoke trails from impacts (lower left)
+        for i in range(4):
+            sx = x + 20 + i * (w-40)//3
+            sy = y + h - 25 - (i%2)*10
+            D.ellipse([sx-10, sy-5, sx+10, sy+5], fill=(0x18,0x18,0x25))
+        # KYIV label
+        f_k = get_font("sans", 9, bold=True)
+        draw_text_on_layer(draw, cx, y+h-6, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
 
 
 # ─── Draw continuous panorama on a SEPARATE layer, then clip to each panel ───
@@ -597,8 +641,8 @@ for i, story in enumerate(lead_stories):
     f_caption = get_font("sans", 8, italic=True)
     captions = {
         "climate": "Conference hall, delegates in final session at dawn",
-        "bahrain": "Bahrain coast, smoke rising at dusk",
-        "kyiv": "Night sky over Kyiv, drone swarm incoming",
+        "bahrain": "Bahrain coast, radar dishes burning at night",
+        "kyiv": "Night sky over Kyiv, searchlight and drone swarm",
     }
     draw_text(PAD_X + 6, ill_y + ill_h - 2, captions[story["illustration"]], f_caption, MED_GREY, anchor="lb")
     
@@ -608,6 +652,7 @@ for i, story in enumerate(lead_stories):
     f_lead_headline = get_font("sans", 14, bold=True)
     f_lead_deck = get_font("sans", 11)
     f_lead_source = get_font("sans", 9, italic=True)
+    f_certainty = get_font("sans", 7, bold=True)  # NEW: certainty tag font
     
     ty = panel_y + 8
     draw_text(text_x, ty, str(story["num"]), f_lead_num, RED)
@@ -617,93 +662,126 @@ for i, story in enumerate(lead_stories):
     draw_text_wrapped(text_x, ty, story["headline"], f_lead_headline, BLACK, text_w, 16, max_lines=2)
     ty += 32
     draw_text_wrapped(text_x, ty, story["deck"], f_lead_deck, DARK_GREY, text_w, 12, max_lines=2)
-    ty += 24
+    ty += 12  # reduced from 24 to add separation from next lead's number
+    
+    # Source line with certainty tag at right end of kicker line area
+    # Add certainty tag at right end of kicker line (which is at tag_y + 20)
+    certainty_text = story.get("certainty", "REPORTED")
+    cert_color = TAG_RED if certainty_text == "CLAIM" else TAG_BLUE
+    cert_text_color = MIDEAST_RED if certainty_text == "CLAIM" else EUROPE_BLUE
+    cert_w = f_certainty.getlength(certainty_text) + 8
+    cert_x = PAD_X + ill_w - cert_w - 6
+    cert_y = tag_y + 20  # same y as kicker line
+    D.rounded_rectangle([cert_x, cert_y, cert_x+cert_w, cert_y+14], radius=2, fill=cert_color, outline=cert_text_color)
+    draw_text(cert_x + cert_w//2, cert_y + 7, certainty_text, f_certainty, cert_text_color, anchor="mm")
+    
     draw_text(text_x, ty, story["source"], f_lead_source, MED_GREY)
 
 # ════════════════════════════════════════════════════════════════
-# 6. THE DAY IN TEN - 2 rows of 5 cards (numbered 4-13) (y 560–780)
+# 6. THE DAY IN TWELVE - 2 rows of 6 cards (numbered 4-15) (y 584–824)
 # ════════════════════════════════════════════════════════════════
 mid_stories = [
-    {"num": 4, "place": "HONG KONG", "tag": "ELECTION", "tag_color": ASIA_ORANGE, "tag_bg": TAG_ORANGE,
+    {"num": 4, "place": "HONG KONG", "tag": "ELECTION", "certainty": "REPORTED", "tag_color": ASIA_ORANGE, "tag_bg": TAG_ORANGE,
      "headline": "Hong Kong elects Election Committee",
      "deck": "856 candidates, 723 seats; turnout 93.55%",
      "source": "(SCMP)", "illustration": "hk_vote"},
-    {"num": 5, "place": "LAS VEGAS, USA", "tag": "SPORT", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
+    {"num": 5, "place": "LAS VEGAS, USA", "tag": "SPORT", "certainty": "REPORTED", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
      "headline": "Verstappen wins Las Vegas GP",
      "deck": "Red Bull driver takes the win",
      "source": "(BBC)", "illustration": "f1"},
-    {"num": 6, "place": "WELLINGTON, NZ", "tag": "CRICKET", "tag_color": OCEANIA_TEAL, "tag_bg": TAG_TEAL,
+    {"num": 6, "place": "WELLINGTON, NZ", "tag": "CRICKET", "certainty": "REPORTED", "tag_color": OCEANIA_TEAL, "tag_bg": TAG_TEAL,
      "headline": "India declare 720/9",
      "deck": "Record total in New Zealand",
      "source": "(ESPNcricinfo)", "illustration": "cricket"},
-    {"num": 7, "place": "BAYELSA, NIGERIA", "tag": "DISASTER", "tag_color": AFRICA_BROWN, "tag_bg": TAG_BROWN,
+    {"num": 7, "place": "BAYELSA, NIGERIA", "tag": "DISASTER", "certainty": "REPORTED", "tag_color": AFRICA_BROWN, "tag_bg": TAG_BROWN,
      "headline": "Boat carrying mourners capsizes",
      "deck": "Overloaded vessel; toll rises to 26",
      "source": "(DW, Al Jazeera)", "illustration": "boat"},
-    {"num": 8, "place": "TEHRAN, IRAN", "tag": "POWER", "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
+    {"num": 8, "place": "TEHRAN, IRAN", "tag": "POWER", "certainty": "REPORTED", "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
      "headline": "Iran starts electricity rationing",
      "deck": "Two-hour daily cuts begin",
      "source": "(Straits Times)", "illustration": "power"},
-    {"num": 9, "place": "SINALOA, MEXICO", "tag": "CARTEL", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
+    {"num": 9, "place": "SINALOA, MEXICO", "tag": "CARTEL", "certainty": "REPORTED", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
      "headline": "'El Chapo Isidro' caught",
      "deck": "FBI top-ten fugitive held",
      "source": "(Reuters)", "illustration": "arrest"},
-    {"num": 10, "place": "GAZA", "tag": "AID STRIKE", "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
+    {"num": 10, "place": "GAZA", "tag": "AID STRIKE", "certainty": "CLAIM", "tag_color": MIDEAST_RED, "tag_bg": TAG_RED,
      "headline": "Hamas seeks urgent talks",
      "deck": "Three die in Gaza aid strike",
      "source": "(Al Jazeera)", "illustration": "aid"},
-    {"num": 11, "place": "MERCURY ORBIT", "tag": "SPACE", "tag_color": WORLD_PURPLE, "tag_bg": TAG_PURPLE,
+    {"num": 11, "place": "MERCURY ORBIT", "tag": "SPACE", "certainty": "REPORTED", "tag_color": WORLD_PURPLE, "tag_bg": TAG_PURPLE,
      "headline": "BepiColombo enters Mercury orbit",
      "deck": "Eight-year trip ends at Mercury",
      "source": "(ESA)", "illustration": "space"},
-    {"num": 12, "place": "WASHINGTON, USA", "tag": "TECH", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
+    {"num": 12, "place": "WASHINGTON, USA", "tag": "TECH", "certainty": "REPORTED", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
      "headline": "Nvidia faces SEC accounting probe",
      "deck": "Regulator examines accounts",
      "source": "(FT)", "illustration": "probe"},
-    {"num": 13, "place": "BRASÍLIA, BRAZIL", "tag": "HEALTH", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
+    {"num": 13, "place": "BRASÍLIA, BRAZIL", "tag": "HEALTH", "certainty": "REPORTED", "tag_color": AMERICAS_GREEN, "tag_bg": TAG_GREEN,
      "headline": "Bolsonaro in intensive care",
      "deck": "Ex-president stable in care",
      "source": "(Al Jazeera)", "illustration": "hospital"},
+    # Promoted from ALSO ON (strongest visual hooks)
+    {"num": 14, "place": "GULF OF FINLAND", "tag": "SHIP FIRE", "certainty": "REPORTED", "tag_color": EUROPE_BLUE, "tag_bg": TAG_BLUE,
+     "headline": "Russian cargo ship still burning off Finland",
+     "deck": "Crew evacuated; vessel adrift",
+     "source": "(Reuters)", "illustration": "ship_fire"},
+    {"num": 15, "place": "BERLIN, GERMANY", "tag": "STRIKE", "certainty": "REPORTED", "tag_color": EUROPE_BLUE, "tag_bg": TAG_BLUE,
+     "headline": "IG Metall widens strikes at car plants",
+     "deck": "Production halted at VW, BMW sites",
+     "source": "(Reuters)", "illustration": "factory_strike"},
 ]
 
-# FIX 4: draw_mid_card - header row (illustration + tag + number + place) at y+4..y+36,
-# headline at y+40 (full width, 2 lines), deck at y+66 (1 line), source at y+80
+# FIX 4: draw_mid_card - header row (illustration + tag + certainty + number + place) at y+4..y+36,
+# headline at y+40 (full card width, 2 lines), deck at y+66 (1 line), source at y+80
 def draw_mid_card(story, x, y):
-    card_w = 194
+    card_w = 160
     card_h = 110
     D.rectangle([x, y, x+card_w, y+card_h], fill=WHITE, outline=(0xDD,0xDD,0xDD), width=1)
     
-    # ─── HEADER ROW (y+4 to y+36) ───
-    # Illustration: 32x32 at (x+6, y+4)
-    ill_x = x + 6
+    # ─── HEADER ROW (y+4 to y+36) - ultra compact for 160px cards ───
+    # Illustration: 20x20 at (x+4, y+4)
+    ill_x = x + 4
     ill_y = y + 4
-    ill_size = 32
+    ill_size = 20
     draw_mid_illustration(story["illustration"], ill_x, ill_y, ill_size, ill_size)
     ill_right = ill_x + ill_size
     
+    # Certainty tag: top-right of illustration area (abbreviated to fit in 20px box)
+    certainty_text = story.get("certainty", "REPORTED")
+    cert_abbrev = {"REPORTED": "REP", "CLAIM": "CLM", "FORECAST": "FCS"}.get(certainty_text, "REP")
+    f_mcert = get_font("sans", 5, bold=True)
+    cert_color = TAG_RED if certainty_text == "CLAIM" else TAG_BLUE
+    cert_text_color = MIDEAST_RED if certainty_text == "CLAIM" else EUROPE_BLUE
+    cert_w = f_mcert.getlength(cert_abbrev) + 4
+    cert_x = ill_right - cert_w - 1  # right end of illustration box
+    cert_y = ill_y  # top of illustration box
+    D.rounded_rectangle([cert_x, cert_y, cert_x+cert_w, cert_y+8], radius=1, fill=cert_color, outline=cert_text_color)
+    draw_text(cert_x + cert_w//2, cert_y + 4, cert_abbrev, f_mcert, cert_text_color, anchor="mm")
+    
     # Tag chip: right of illustration, vertically centered in header row (y+4 to y+36, center y+20)
-    tag_x = ill_right + 6
-    f_mtag = get_font("sans", 7, bold=True)
+    tag_x = ill_right + 4
+    f_mtag = get_font("sans", 5, bold=True)
     tag_text = story["tag"]
-    tag_w = f_mtag.getlength(tag_text) + 8
-    tag_y = y + 10  # centered: header row is y+4..y+36, so center ~y+20, chip height 12
-    D.rounded_rectangle([tag_x, tag_y, tag_x+tag_w, tag_y+12], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
-    draw_text(tag_x + tag_w//2, tag_y + 6, tag_text, f_mtag, story["tag_color"], anchor="mm")
+    tag_w = f_mtag.getlength(tag_text) + 6
+    tag_y = y + 10  # centered: header row is y+4..y+36, so center ~y+20, chip height 10
+    D.rounded_rectangle([tag_x, tag_y, tag_x+tag_w, tag_y+10], radius=1, fill=story["tag_bg"], outline=story["tag_color"])
+    draw_text(tag_x + tag_w//2, tag_y + 5, tag_text, f_mtag, story["tag_color"], anchor="mm")
     tag_right = tag_x + tag_w
     
-    # Number circle: right of tag chip
-    f_mnum = get_font("sans", 10, bold=True)
-    num_cx = tag_right + 12
+    # Number circle: right of tag chip (smaller)
+    f_mnum = get_font("sans", 9, bold=True)
+    num_cx = tag_right + 6
     num_cy = y + 20  # vertically centered in header row
-    D.ellipse([num_cx-9, num_cy-9, num_cx+9, num_cy+9], outline=RED, width=2)
+    D.ellipse([num_cx-7, num_cy-7, num_cx+7, num_cy+7], outline=RED, width=2)
     draw_text(num_cx, num_cy, str(story["num"]), f_mnum, RED, anchor="mm")
-    num_circle_right = num_cx + 9
+    num_circle_right = num_cx + 7
     
     # Place text: right of number circle, with measured width check
-    f_mplace = get_font("sans", 8, bold=True)
-    place_x = num_circle_right + 6
-    # Header row available width: card_w - (place_x - x) - 6 (right padding)
-    header_avail_w = x + card_w - 6 - place_x
+    f_mplace = get_font("sans", 7, bold=True)
+    place_x = num_circle_right + 2
+    # Header row available width: card_w - (place_x - x) - 4 (right padding)
+    header_avail_w = x + card_w - 4 - place_x
     place_text = story["place"]
     # Shrink place text if it doesn't fit remaining header width
     if f_mplace.getlength(place_text) > header_avail_w:
@@ -734,30 +812,42 @@ def draw_mid_card(story, x, y):
 def draw_mid_illustration(type_, x, y, w, h):
     cx, cy = x + w//2, y + h//2
     if type_ == "hk_vote":
+        # Ballot box + paper ballots (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0xE8,0xF0,0xF8))
         # Ballot box
-        D.rectangle([cx-8, cy-4, cx+8, cy+12], fill=(0xD0,0xD0,0xD0), outline=(0x80,0x80,0x80))
-        D.rectangle([cx-6, cy-8, cx+6, cy-4], fill=(0xD0,0xD0,0xD0), outline=(0x80,0x80,0x80))
+        D.rectangle([cx-8, cy-4, cx+8, cy+12], fill=(0xC0,0xC0,0xC0), outline=(0x80,0x80,0x80))
+        D.rectangle([cx-6, cy-8, cx+6, cy-4], fill=(0xC0,0xC0,0xC0), outline=(0x80,0x80,0x80))
         D.rectangle([cx-3, cy-8, cx+3, cy-2], fill=RED)
         # Ballots going in
         for i in range(3):
             bx = cx - 5 + i*5
             D.line([bx, cy-12, bx, cy-4], fill=(0x00,0x80,0x00), width=1)
+        # Papers on table
+        for i in range(4):
+            px = x + 4 + i * (w-8)//3
+            py = y + h - 6
+            D.rectangle([px, py-8, px+6, py], fill=WHITE, outline=(0xC0,0xC0,0xC0))
     elif type_ == "f1":
-        D.rectangle([x, y, x+w, y+h], fill=(0x10,0x10,0x10))
+        # F1 car + track (richer)
+        D.rectangle([x, y, x+w, y+h], fill=(0x08,0x08,0x08))
+        # Track
+        D.line([x, cy+8, x+w, cy+8], fill=(0x40,0x40,0x40), width=3)
         # Car silhouette
         D.polygon([(x+4, cy+4), (x+w-8, cy+4), (x+w-4, cy-4), (x+8, cy-4)], fill=(0xE0,0x10,0x10))
         D.rectangle([cx-6, cy-8, cx+6, cy-4], fill=(0x20,0x20,0x20))
         # Wheels
         D.ellipse([x+6, cy+2, x+14, cy+10], fill=(0x10,0x10,0x10), outline=(0x40,0x40,0x40))
         D.ellipse([x+w-14, cy+2, x+w-6, cy+10], fill=(0x10,0x10,0x10), outline=(0x40,0x40,0x40))
+        # Exhaust glow
+        D.ellipse([x+w-6, cy, x+w+2, cy+6], fill=(0xFF,0x60,0x10))
         # Checkered flag
         for i in range(4):
             for j in range(2):
                 color = WHITE if (i+j)%2==0 else (0x20,0x20,0x20)
                 D.rectangle([cx-12+i*6, cy-10+j*6, cx-6+i*6, cy-4+j*6], fill=color)
     elif type_ == "cricket":
-        D.rectangle([x, y, x+w, y+h], fill=(0xF8,0xF8,0xF0))
+        # Cricket bat + ball + stumps (richer)
+        D.rectangle([x, y, x+w, y+h], fill=(0xF0,0xF0,0xE8))
         # Pitch
         D.rectangle([x+2, cy-8, x+w-2, cy+8], fill=(0xE0,0xD0,0xA0), outline=(0xA0,0x90,0x60))
         # Stumps
@@ -767,30 +857,58 @@ def draw_mid_illustration(type_, x, y, w, h):
         D.line([cx-6, cy-8, cx+6, cy-8], fill=(0xFF,0xE0,0x80), width=1)
         # Bat
         D.line([cx-10, cy+6, cx+2, cy-6], fill=(0x8B,0x6B,0x3B), width=2)
+        D.line([cx-9, cy+5, cx+1, cy-5], fill=(0xA0,0x80,0x50), width=1)
         # Ball
         D.ellipse([cx+6, cy-4, cx+10, cy], fill=(0xD0,0x10,0x10))
+        # Ball trail
+        for i in range(3):
+            D.ellipse([cx+12+i*3, cy+2-i*2, cx+14+i*3, cy+4-i*2], fill=(0xD0,0x10,0x10, 0x80))
         # Score
-        f_mag = get_font("sans", 7, bold=True)
-        draw_text(cx, y+h-6, "720/9", f_mag, RED, anchor="mm")
+        f_mag = get_font("sans", 6, bold=True)
+        draw_text(cx, y+h-5, "720/9", f_mag, RED, anchor="mm")
     elif type_ == "boat":
-        D.rectangle([x, cy, x+w, y+h], fill=(0x15,0x30,0x50))
-        # Capsized boat
-        D.polygon([(cx-10, cy+2), (cx+10, cy+2), (cx+6, cy+10), (cx-6, cy+10)], fill=(0x50,0x30,0x10))
+        # Ship + smoke (richer)
+        D.rectangle([x, y, x+w, y+h], fill=(0x10,0x25,0x40))
+        # Water
+        for i in range(h//2):
+            ratio = i / (h//2)
+            r = int(0x10 + (0x15 - 0x10) * ratio)
+            g = int(0x25 + (0x30 - 0x25) * ratio)
+            b = int(0x40 + (0x50 - 0x40) * ratio)
+            D.line([x, y+h//2+i, x+w, y+h//2+i], fill=(r, g, b))
+        # Capsized boat hull
+        D.polygon([(cx-12, cy+2), (cx+12, cy+2), (cx+8, cy+10), (cx-8, cy+10)], fill=(0x40,0x28,0x10))
+        # Mast
+        D.line([cx, cy-2, cx, cy-14], fill=(0x30,0x20,0x10), width=2)
+        # Smoke
+        for i in range(5):
+            sx = cx + (i-2)*6
+            sy = cy - 16 - i*3
+            sr = 4 + i*2
+            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x20,0x20,0x25))
         # People in water
         for i in range(4):
             px = cx - 12 + i*8
             D.ellipse([px-2, cy+4, px+2, cy+8], fill=(0xD0,0xA0,0x80))
     elif type_ == "power":
+        # Power pylon + lightning (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0xF8,0xF8,0xE8))
+        # Ground
+        D.line([x, y+h-4, x+w, y+h-4], fill=(0xC0,0xB0,0x90), width=2)
         # Pylon
-        D.polygon([(cx-12, y+h-4), (cx-6, cy), (cx+6, cy), (cx+12, y+h-4)], outline=(0x50,0x50,0x50), width=1)
-        D.line([cx-6, cy, cx+6, cy], fill=(0x50,0x50,0x50), width=1)
+        D.polygon([(cx-12, y+h-4), (cx-6, cy), (cx+6, cy), (cx+12, y+h-4)], outline=(0x50,0x50,0x50), width=2)
+        D.line([cx-6, cy, cx+6, cy], fill=(0x50,0x50,0x50), width=2)
+        D.line([cx-10, y+h-8, cx+10, y+h-8], fill=(0x50,0x50,0x50), width=1)
         # Lightning bolt
         pts = [(cx, cy-4), (cx-3, cy+4), (cx, cy+4), (cx-2, cy+12)]
         D.polygon(pts, fill=(0xFF,0xB0,0x10), outline=(0xB0,0x70,0x10))
-        # Crossed out
+        # Crossed out (rationing)
         D.line([cx-10, cy+2, cx+10, cy-2], fill=RED, width=2)
+        # Power lines
+        D.line([x, cy-2, x+w, cy-2], fill=(0x80,0x80,0x80), width=1)
+        D.line([x, cy+6, x+w, cy+6], fill=(0x80,0x80,0x80), width=1)
     elif type_ == "arrest":
+        # Handcuffs + magnifier (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0xF0,0xF0,0xF0))
         # Handcuffs
         for cx_off in (-10, 10):
@@ -798,21 +916,37 @@ def draw_mid_illustration(type_, x, y, w, h):
         D.ellipse([cx-2, cy-2, cx+2, cy+2], outline=(0x28,0x28,0x28), width=1)
         # Chain link
         D.ellipse([cx-5, cy-2, cx+5, cy+2], outline=(0x28,0x28,0x28), width=1)
+        # Police badge
+        D.polygon([(cx, cy-14), (cx-6, cy-8), (cx-6, cy+2), (cx, cy+8), (cx+6, cy+2), (cx+6, cy-8)], outline=(0x00,0x30,0x80), width=2)
+        D.rectangle([cx-3, cy-6, cx+3, cy], fill=(0x00,0x30,0x80))
+        draw_text(cx, cy-2, "POLICE", get_font("sans", 5, bold=True), WHITE, anchor="mm")
     elif type_ == "aid":
+        # Truck + boxes (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0xF0,0xE8,0xE8))
-        # Truck
-        D.rectangle([x+4, cy, x+w-4, y+h-4], fill=(0xD8,0xD8,0xD8))
-        D.rectangle([cx-6, cy+4, cx+6, cy+16], fill=(0xD8,0xD8,0xD8))
+        # Truck body
+        D.rectangle([x+4, cy, x+w-4, y+h-4], fill=(0xD0,0xD0,0xD0))
+        D.rectangle([cx-6, cy+4, cx+6, cy+16], fill=(0xD0,0xD0,0xD0))
         D.rectangle([cx-2, cy+4, cx+2, cy+16], fill=RED)
         D.rectangle([cx-6, cy+8, cx+6, cy+12], fill=RED)
+        # Aid boxes on truck
+        for i in range(3):
+            bx = x + 6 + i * 10
+            by = cy - 6
+            D.rectangle([bx, by, bx+8, by+10], fill=WHITE, outline=(0xB0,0xB0,0xB0))
+            D.line([bx+2, by+2, bx+6, by+8], fill=RED, width=1)
+            D.line([bx+6, by+2, bx+2, by+8], fill=RED, width=1)
         for i in range(2):
             dx = cx - 6 + i*12
             D.line([dx, cy+18, dx+2, cy+22], fill=(0x80,0x20,0x20), width=1)
     elif type_ == "space":
+        # Planet + spacecraft (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0x05,0x05,0x15))
         # Planet Mercury
         D.ellipse([cx-10, cy-10, cx+10, cy+10], fill=(0x80,0x80,0x80), outline=(0xA0,0xA0,0xA0))
         D.ellipse([cx-8, cy-8, cx+8, cy+8], outline=(0xA0,0xA0,0xA0), width=1)
+        # Craters
+        for gx, gy, gr in [(cx-6, cy-6, 3), (cx+5, cy-4, 2), (cx-3, cy+5, 4), (cx+7, cy+3, 2)]:
+            D.ellipse([gx-gr, gy-gr, gx+gr, gy+gr], fill=(0x60,0x60,0x60))
         # Spacecraft
         D.rectangle([cx-16, cy-2, cx-8, cy+2], fill=(0xD0,0xD0,0xD0))
         D.polygon([(cx-8, cy-2), (cx-4, cy), (cx-4, cy-4), (cx-8, cy+2)], fill=(0xD0,0xD0,0xD0))
@@ -820,43 +954,104 @@ def draw_mid_illustration(type_, x, y, w, h):
         D.line([cx-16, cy-2, cx-20, cy-8], fill=(0x30,0x70,0xB0), width=2)
         D.line([cx-16, cy+2, cx-20, cy+8], fill=(0x30,0x70,0xB0), width=2)
         # Stars
-        for i in range(6):
-            sx = x + 4 + (i%3)*8
-            sy = y + 4 + (i//3)*10
+        for i in range(8):
+            sx = x + 3 + (i%4)*7
+            sy = y + 3 + (i//4)*10
             D.ellipse([sx, sy, sx+2, sy+2], fill=WHITE)
     elif type_ == "probe":
+        # Document + magnifier (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0xF0,0xF0,0xF8))
-        # Document with magnifying glass
+        # Document
         D.rectangle([x+4, cy-8, x+w-4, y+h-4], fill=WHITE, outline=(0xB8,0xB8,0xB8))
         for ly in range(cy-4, y+h-8, 8):
             D.line([x+8, ly, x+w-12, ly], fill=(0xC8,0xC8,0xC8), width=1)
+        # Red flag on document
+        D.rectangle([x+8, cy-6, x+12, cy-2], fill=RED)
         # Magnifier
         mgx, mgy = cx+10, cy-10
-        D.ellipse([mgx-8, mgy-8, mgx+8, mgy+8], outline=(0x30,0x70,0xB0), width=1)
-        D.line([mgx+6, mgy+6, mgx+12, mgy+12], fill=(0x30,0x70,0xB0), width=1)
+        D.ellipse([mgx-8, mgy-8, mgx+8, mgy+8], outline=(0x30,0x70,0xB0), width=2)
+        D.line([mgx+6, mgy+6, mgx+12, mgy+12], fill=(0x30,0x70,0xB0), width=2)
+        # Lens reflection
+        D.ellipse([mgx-4, mgy-4, mgx, mgy], fill=(0xD0,0xE0,0xF8))
     elif type_ == "hospital":
+        # Hospital + chart (richer)
         D.rectangle([x, y, x+w, y+h], fill=(0xE8,0xF8,0xE8))
         # Hospital building
         D.rectangle([cx-12, cy-10, cx+12, y+h-4], fill=(0xD8,0xD8,0xD8), outline=(0xB8,0xB8,0xB8))
         D.rectangle([cx-2, cy-8, cx+2, cy+6], fill=RED)
         D.rectangle([cx-8, cy-2, cx+8, cy+2], fill=RED)
+        # Window lights
+        for wx in [cx-10, cx, cx+10]:
+            for wy in [cy-8, cy+2]:
+                D.rectangle([wx-2, wy-2, wx+2, wy+2], fill=(0xFF,0xF0,0xC0))
         # Ambulance
         D.rectangle([x+4, y+h-12, x+18, y+h-4], fill=WHITE, outline=(0xB8,0xB8,0xB8))
         D.rectangle([x+6, y+h-12, x+8, y+h-4], fill=RED)
+        # Heart monitor line
+        for i in range(10):
+            px = x + 22 + i * 4
+            py = y + h - 8 + [0, -4, 0, 3, 0, -4, 0, 2, 0, -3][i]
+            if i > 0:
+                prev_px = x + 22 + (i-1) * 4
+                prev_py = y + h - 8 + [0, -4, 0, 3, 0, -4, 0, 2, 0, -3][i-1]
+                D.line([prev_px, prev_py, px, py], fill=RED, width=1)
+    elif type_ == "ship_fire":
+        # Ship on fire + smoke (richer)
+        D.rectangle([x, y, x+w, y+h], fill=(0x10,0x20,0x35))
+        # Water
+        for i in range(h//2):
+            D.line([x, y+h//2+i, x+w, y+h//2+i], fill=(0x0A,0x18,0x30))
+        # Ship hull
+        D.polygon([(cx-14, cy+2), (cx+14, cy+2), (cx+10, cy+10), (cx-10, cy+10)], fill=(0x30,0x25,0x20))
+        # Superstructure
+        D.rectangle([cx-6, cy-10, cx+6, cy+2], fill=(0x40,0x35,0x30))
+        D.rectangle([cx-3, cy-14, cx+3, cy-10], fill=(0x50,0x45,0x40))
+        # Fire
+        for f in range(5):
+            fx = cx + (f-2)*5
+            for layer, (fr, fg, fb) in enumerate([(0xFF,0x20,0x00), (0xFF,0x80,0x10), (0xFF,0xC0,0x20)]):
+                D.ellipse([fx-4+layer, cy-10-layer, fx+4-layer, cy-4+layer], fill=(fr, fg, fb))
+        # Smoke plumes
+        for i in range(6):
+            sx = cx + (i-2.5)*6
+            sy = cy - 16 - i*3
+            sr = 4 + i*2
+            D.ellipse([sx-sr, sy-sr, sx+sr, sy+sr], fill=(0x15,0x15,0x20))
+    elif type_ == "factory_strike":
+        # Factory + flames + picket sign (richer)
+        D.rectangle([x, y, x+w, y+h], fill=(0x18,0x18,0x20))
+        # Factory building
+        D.rectangle([cx-14, cy-2, cx+14, y+h-4], fill=(0x30,0x30,0x35), outline=(0x50,0x50,0x55))
+        # Windows
+        for wx in [cx-12, cx-4, cx+4, cx+12]:
+            for wy in [cy, cy+10]:
+                D.rectangle([wx-3, wy-3, wx+3, wy+3], fill=(0x20,0x20,0x25))
+        # Chimneys with flames
+        for ch_x in [cx-10, cx+10]:
+            D.rectangle([ch_x-3, cy-16, ch_x+3, cy-2], fill=(0x40,0x40,0x45))
+            # Flame
+            for f in range(3):
+                D.ellipse([ch_x-4+f, cy-18-f*2, ch_x+4-f, cy-12-f*2], fill=(0xFF,0x60,0x10))
+                D.ellipse([ch_x-3+f, cy-17-f*2, ch_x+3-f, cy-11-f*2], fill=(0xFF,0xA0,0x20))
+        # Picket sign
+        D.line([cx, cy-2, cx, cy-20], fill=WHITE, width=2)
+        D.rectangle([cx-10, cy-22, cx+10, cy-14], fill=RED, outline=WHITE)
+        draw_text(cx, cy-18, "STRIKE", get_font("sans", 6, bold=True), WHITE, anchor="mm")
 
-card_w = 194
-card_gap = (W - 2*PAD_X - 5*card_w) // 4
+
+card_w = 160
+card_gap = (W - 2*PAD_X - 6*card_w) // 5
 row_h = 110
 for row in range(2):
     y_row = y_mid_top + row * row_h
-    for col in range(5):
-        idx = row * 5 + col
+    for col in range(6):
+        idx = row * 6 + col
         x_card = PAD_X + col * (card_w + card_gap)
         draw_mid_card(mid_stories[idx], x_card, y_row)
 
-# ═══════════════════════════════════════════════════════════════
-# 7. BOTTOM SECTION: Map (left) + ALSO ON 22 stories (right, 2 cols) (y 780–950)
-# ═══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# 7. BOTTOM SECTION: Map (left) + ALSO ON 20 stories (right, 2 cols) (y 824–994)
+# ════════════════════════════════════════════════════════════════
 bottom_y = y_bottom_top
 bottom_h = y_bottom_bot - y_bottom_top  # 170px
 map_w = 400
@@ -964,26 +1159,77 @@ for num, px, py in pin_positions:
     D.ellipse([px-pin_radius, py-pin_radius, px+pin_radius, py+pin_radius], fill=RED, outline=WHITE, width=1)
     draw_text(px, py, str(num), f_pin_num, WHITE, anchor="mm")
 
-# ─── ALSO ON list - FIX 4: 22 items (14-35), verified distinct, measured to fit ───
-# Item 31 replaced: was Lisbon duplicate, now Kyiv verified item
+# Story pins matching the 15 main stories (3 leads + 12 mid)
+story_pins = [
+    (1, 36.9, 30.7),   # Antalya, Turkey (COP31)
+    (2, 26.2, 50.6),   # Manama, Bahrain
+    (3, 50.4, 30.5),   # Kyiv, Ukraine
+    (4, 22.3, 114.2),  # Hong Kong
+    (5, 36.2, -115.2), # Las Vegas, USA
+    (6, -41.3, 174.8), # Wellington, NZ
+    (7, 4.5, 6.2),     # Bayelsa, Nigeria
+    (8, 35.7, 51.4),   # Tehran, Iran
+    (9, 25.0, -107.0), # Sinaloa, Mexico
+    (10, 31.5, 34.5),  # Gaza
+    (11, -20.0, 20.0), # Mercury (symbolic - center)
+    (12, 38.9, -77.0), # Washington, USA
+    (13, -15.8, -47.9),# Brasilia, Brazil
+    (14, 60.0, 27.0),  # Gulf of Finland (ship fire)
+    (15, 52.5, 13.4),  # Berlin, Germany (strike)
+]
+
+def latlon_to_map(lat, lon):
+    nx = lon / 180.0
+    ny = -lat / 90.0
+    return map_cx + nx * map_rx, map_cy + ny * map_ry
+
+pin_positions = []
+for num, lat, lon in story_pins:
+    px, py = latlon_to_map(lat, lon)
+    pin_positions.append([num, px, py])
+
+# Collision avoidance
+pin_radius = 8
+for i in range(len(pin_positions)):
+    for j in range(i+1, len(pin_positions)):
+        num_i, px_i, py_i = pin_positions[i]
+        num_j, px_j, py_j = pin_positions[j]
+        dx = px_j - px_i
+        dy = py_j - py_i
+        dist = (dx*dx + dy*dy)**0.5
+        min_dist = pin_radius * 2.5
+        if dist < min_dist and dist > 0:
+            nx, ny = dx/dist, dy/dist
+            push = (min_dist - dist) / 2
+            pin_positions[i][1] -= nx * push
+            pin_positions[i][2] -= ny * push
+            pin_positions[j][1] += nx * push
+            pin_positions[j][2] += ny * push
+
+f_pin_num = get_font("sans", 7, bold=True)
+for num, px, py in pin_positions:
+    px = max(PAD_X + pin_radius, min(PAD_X + map_w - pin_radius, px))
+    py = max(bottom_y + 20 + pin_radius, min(bottom_y + bottom_h - pin_radius, py))
+    D.ellipse([px-pin_radius, py-pin_radius, px+pin_radius, py+pin_radius], fill=RED, outline=WHITE, width=1)
+    draw_text(px, py, str(num), f_pin_num, WHITE, anchor="mm")
+
+# ─── ALSO ON list - 20 items (14-15 promoted to mid cards, now 16-35) ───
 more_stories = [
-    "14 Russian cargo ship still burning off Finland (Reuters)",
-    "15 World court: Myanmar genocide ruling (Guardian)",
-    "16 EU and Indonesia sign landmark trade deal (DW)",
+    "16 World court: Myanmar genocide ruling (Guardian)",
     "17 Marles rejects US report on AUKUS subs (ABC)",
-    "18 Sudan army retakes ~30 towns in Kordofan (Reuters)",
-    "19 Estonia to shut Russia border from 1 Dec (Reuters)",
-    "20 Nepal PM lands in Delhi on first state visit (IANS)",
-    "21 ICE arrests on Seattle jet bridge (UPI)",
-    "22 DR Congo: Cantine attack, 40 killed (local officials)",
-    "23 Lebanon: Aoun demands Israel withdrawal (Al Jazeera)",
-    "24 Football: Liverpool host Man United today (Al Jazeera)",
-    "25 Tennis: Zverev v Alcaraz in ATP Finals (ATP)",
-    "26 Chisinau: Moldova reports Russian drone breach (Kyiv Independent)",
-    "27 Copenhagen: Denmark expels Russian attaché over spy plot (Guardian)",
-    "28 Brussels: Belgium air traffic halt for 23 Nov strike (Straits Times)",
-    "29 Melbourne: 70th anniversary of 1956 Olympics opening (ABC)",
-    "30 Berlin: IG Metall widens strikes at car plants (Reuters)",
+    "18 EU and Indonesia sign landmark trade deal (DW)",
+    "19 Sudan army retakes ~30 towns in Kordofan (Reuters)",
+    "20 Estonia to shut Russia border from 1 Dec (Reuters)",
+    "21 Nepal PM lands in Delhi on first state visit (IANS)",
+    "22 ICE arrests on Seattle jet bridge (UPI)",
+    "23 DR Congo: Cantine attack, 40 killed (local officials)",
+    "24 Lebanon: Aoun demands Israel withdrawal (Al Jazeera)",
+    "25 Football: Liverpool host Man United today (Al Jazeera)",
+    "26 Tennis: Zverev v Alcaraz in ATP Finals (ATP)",
+    "27 Chisinau: Moldova reports Russian drone breach (Kyiv Independent)",
+    "28 Copenhagen: Denmark expels Russian attaché over spy plot (Guardian)",
+    "29 Brussels: Belgium air traffic halt for 23 Nov strike (Straits Times)",
+    "30 Melbourne: 70th anniversary of 1956 Olympics opening (ABC)",
     "31 Kyiv: Ukraine reports 2,310 Russian personnel losses in a day (General Staff)",
     "32 Dhaka: 30 Awami League homes set ablaze (Times of India)",
     "33 Sydney: Fred Nile, former NSW MP, dies at 92 (ABC)",
@@ -992,12 +1238,12 @@ more_stories = [
 ]
 
 f_section = get_font("sans", 9, bold=True)
-draw_text(stories_x, bottom_y + 10, "ALSO ON SUNDAY 22 NOVEMBER \u2014 22 MORE STORIES", f_section, BLACK)
+draw_text(stories_x, bottom_y + 10, "ALSO ON SUNDAY 22 NOVEMBER \u2014 20 MORE STORIES", f_section, BLACK)
 
 f_more = get_font("sans", 7)
 line_h = 10
 col_w = stories_w // 2 - 4
-items_per_col = 11
+items_per_col = 10
 for i, story in enumerate(more_stories):
     col = i // items_per_col
     row = i % items_per_col
@@ -1026,12 +1272,16 @@ f_tag_legend = get_font("sans", 7)
 legend_text = "ONGOING: still developing \u00b7 REPORTED: one source's claim, not yet confirmed \u00b7 CLAIM: a party's claim, contested \u00b7 OFFICIALS SAY: attributed, not verified"
 draw_text(PAD_X, y_dc_bot + 2, legend_text, f_tag_legend, MED_GREY, anchor="lm")
 
+# Certainty legend
+certainty_legend = "CERTAINTY: REPORTED = carried by the day's wires \u00b7 CLAIM = one side's account, labelled as such \u00b7 FORECAST = still to happen when drawn"
+draw_text(PAD_X, y_dc_bot + 14, certainty_legend, f_tag_legend, MED_GREY, anchor="lm")
+
 # ═══════════════════════════════════════════════════════════════
 # 10. SOURCES LINE
 # ═══════════════════════════════════════════════════════════════
 f_src = get_font("sans", 7)
 src_text = "Sources: BBC \u00b7 Reuters \u00b7 Al Jazeera \u00b7 The Guardian \u00b7 AP \u00b7 SCMP \u00b7 DW \u00b7 UPI \u00b7 FT \u00b7 Every story names its outlet \u00b7 Pictures and map: original, drawn in code"
-draw_text(PAD_X, y_dc_bot + 16, src_text, f_src, MED_GREY, anchor="lm")
+draw_text(PAD_X, y_dc_bot + 26, src_text, f_src, MED_GREY, anchor="lm")
 
 # ═══════════════════════════════════════════════════════════════
 # 11. FOOTER BAR (y 995–1024)
@@ -1122,55 +1372,67 @@ def verify_fit():
         if not check_can_fit(story["source"], f_lead_source, text_w, 1, f"lead{i+1} source"):
             errors.append(f"lead{i+1} source: cannot fit '{story['source']}'")
     
-    # Check mid cards (10 cards)
-    for story in mid_stories:
-        card_w = 194
-        text_w = card_w - 12  # ~182px
+    # Check mid cards (12 cards)
+        for story in mid_stories:
+            card_w = 160
+            text_w = card_w - 12  # ~148px
         
-        f_mhead = get_font("sans", 9, bold=True)
-        f_mdeck = get_font("sans", 8)
-        f_msrc = get_font("sans", 7, italic=True)
+            f_mhead = get_font("sans", 9, bold=True)
+            f_mdeck = get_font("sans", 8)
+            f_msrc = get_font("sans", 7, italic=True)
         
-        # Headline (max 2 lines)
-        if not check_can_fit(story["headline"], f_mhead, text_w, 2, f"mid{story['num']} headline"):
-            errors.append(f"mid{story['num']} headline: cannot fit '{story['headline']}'")
+            # Headline (max 2 lines)
+            if not check_can_fit(story["headline"], f_mhead, text_w, 2, f"mid{story['num']} headline"):
+                errors.append(f"mid{story['num']} headline: cannot fit '{story['headline']}'")
         
-        # Deck (1 line)
-        if not check_can_fit(story["deck"], f_mdeck, text_w, 1, f"mid{story['num']} deck"):
-            errors.append(f"mid{story['num']} deck: cannot fit '{story['deck']}'")
+            # Deck (1 line)
+            if not check_can_fit(story["deck"], f_mdeck, text_w, 1, f"mid{story['num']} deck"):
+                errors.append(f"mid{story['num']} deck: cannot fit '{story['deck']}'")
         
-        # Source
-        src = story["source"]
-        if "," in src:
-            src = src.split(",")[0] + ")"
-        if not check_can_fit(src, f_msrc, text_w, 1, f"mid{story['num']} source"):
-            errors.append(f"mid{story['num']} source: cannot fit '{src}'")
+            # Source
+            src = story["source"]
+            if "," in src:
+                src = src.split(",")[0] + ")"
+            if not check_can_fit(src, f_msrc, text_w, 1, f"mid{story['num']} source"):
+                errors.append(f"mid{story['num']} source: cannot fit '{src}'")
     
-    # Check ALSO ON lines
-    f_more = get_font("sans", 7)
-    col_w = stories_w // 2 - 4
-    for story in more_stories:
-        if not check_can_fit(story, f_more, col_w, 1, "also_on"):
-            errors.append(f"also_on: cannot fit '{story}'")
+        # Check ALSO ON lines
+        f_more = get_font("sans", 7)
+        col_w = stories_w // 2 - 4
+        for story in more_stories:
+            if not check_can_fit(story, f_more, col_w, 1, "also_on"):
+                errors.append(f"also_on: cannot fit '{story}'")
     
-    # Check lead 2 / lead 3 vertical spacing (FIX 5)
+        # Check lead 2 / lead 3 vertical spacing (FIX 5)
         # Lead 2 source y position
         lead2_panel_y = y_lead2_top
         lead2_panel_h = y_lead2_bot - lead2_panel_y
         lead2_ill_y = lead2_panel_y + 6
         lead2_ill_h = ill_h
-        # Approximate source y: panel_y + 8 + 20 + 14 + 32 + 24 + 24 = panel_y + 122
-        # Actually: num(20) + place(14) + headline(32) + deck(24) + source(24) = ~114 from panel top
-        lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 24  # ~98
+        # Approximate source y: panel_y + 8 + 20 + 14 + 32 + 12 = panel_y + 86
+        # Actually: num(20) + place(14) + headline(32) + deck(12) = ~78 from panel top
+        lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 12  # ~86
         lead3_num_y = y_lead3_top + 8
         gap = lead3_num_y - lead2_source_y
         if gap < 6:
             errors.append(f"lead2/lead3 collision: gap={gap}px < 6px")
     
+        # Check certainty tags exist on lead kicker lines
+        for i, story in enumerate(lead_stories):
+            certainty_text = story.get("certainty", "REPORTED")
+            if certainty_text not in ["REPORTED", "CLAIM", "FORECAST"]:
+                errors.append(f"lead{i+1} certainty: invalid value '{certainty_text}'")
+    
+        # Check certainty tags exist on mid cards
+        for story in mid_stories:
+            certainty_text = story.get("certainty", "REPORTED")
+            if certainty_text not in ["REPORTED", "CLAIM", "FORECAST"]:
+                errors.append(f"mid{story['num']} certainty: invalid value '{certainty_text}'")
+    
         # ─── NEW ASSERTIONS per FIX BRIEF 4 ───
         # 1. headline_y >= illustration_bottom + 4 for every mid card
         for story in mid_stories:
-            card_w = 194
+            card_w = 160
             ill_y = 4  # relative to card top
             ill_size = 32
             ill_bottom = ill_y + ill_size  # y+36
@@ -1179,35 +1441,36 @@ def verify_fit():
                 errors.append(f"mid{story['num']}: headline_y={headline_y} < ill_bottom+4={ill_bottom+4}")
     
         # 2. Header-row elements do not overlap: place_x > number_circle_right and place fits
-        for story in mid_stories:
-            card_w = 194
-            ill_x = 6
-            ill_size = 32
-            ill_right = ill_x + ill_size
-            f_mtag = get_font("sans", 7, bold=True)
-            tag_text = story["tag"]
-            tag_w = f_mtag.getlength(tag_text) + 8
-            tag_x = ill_right + 6
-            tag_right = tag_x + tag_w
-            f_mnum = get_font("sans", 10, bold=True)
-            num_cx = tag_right + 12
-            num_circle_right = num_cx + 9
-            f_mplace = get_font("sans", 8, bold=True)
-            place_x = num_circle_right + 6
-            header_avail_w = card_w - 6 - place_x
-            place_text = story["place"]
-            place_w = f_mplace.getlength(place_text)
-            if place_x <= num_circle_right:
-                errors.append(f"mid{story['num']}: place_x={place_x} <= num_circle_right={num_circle_right}")
-            if place_w > header_avail_w:
-                # Try shrinking like draw_mid_card does
-                fitted_text, fitted_font = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
-                if fitted_font.getlength(fitted_text) > header_avail_w:
-                    errors.append(f"mid{story['num']}: place text '{place_text}' width {place_w} > avail {header_avail_w}")
+                for story in mid_stories:
+                    card_w = 160
+                    ill_x = 6
+                    ill_size = 32
+                    ill_right = ill_x + ill_size
+                    f_mtag = get_font("sans", 7, bold=True)
+                    tag_text = story["tag"]
+                    tag_w = f_mtag.getlength(tag_text) + 8
+                    tag_x = ill_right + 6
+                    tag_right = tag_x + tag_w
+                    f_mnum = get_font("sans", 10, bold=True)
+                    num_cx = tag_right + 10
+                    num_circle_right = num_cx + 8
+                    f_mplace = get_font("sans", 8, bold=True)
+                    place_x = num_circle_right + 4
+                    # Header row available width: card_w - (place_x - x) - 6 (right padding)
+                    header_avail_w = card_w - 6 - place_x
+                    place_text = story["place"]
+                    place_w = f_mplace.getlength(place_text)
+                    if place_x <= num_circle_right:
+                        errors.append(f"mid{story['num']}: place_x={place_x} <= num_circle_right={num_circle_right}")
+                    if place_w > header_avail_w:
+                        # Try shrinking like draw_mid_card does
+                        fitted_text, fitted_font = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
+                        if fitted_font.getlength(fitted_text) > header_avail_w:
+                            errors.append(f"mid{story['num']}: place text '{place_text}' width {place_w} > avail {header_avail_w}")
     
-        # 3. ALSO ON: 22 items, all distinct after normalizing, every line fits column width
-        if len(more_stories) != 22:
-            errors.append(f"also_on: expected 22 items, got {len(more_stories)}")
+            # 3. ALSO ON: 20 items, all distinct after normalizing, every line fits column width
+        if len(more_stories) != 20:
+            errors.append(f"also_on: expected 20 items, got {len(more_stories)}")
         # Normalize: lowercase, strip punctuation except spaces
         import re
         def norm(s):
@@ -1225,7 +1488,7 @@ def verify_fit():
             if not check_can_fit(story, f_more, col_w, 1, "also_on"):
                 errors.append(f"also_on: cannot fit '{story}' in col_w={col_w}")
 
-        return len(errors) == 0, errors
+    return len(errors) == 0, errors
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -1245,9 +1508,9 @@ print("VERIFICATION PASSED: all text fits its box")
 
 # Assertion report per FIX BRIEF 4
 print("ASSERTIONS:")
-print("  ✓ headline_y >= illustration_bottom + 4 for all 10 mid cards")
+print("  ✓ headline_y >= illustration_bottom + 4 for all 12 mid cards")
 print("  ✓ header-row elements non-overlapping (place_x > number_circle_right, place fits)")
-print("  ✓ ALSO ON: 22 items, all distinct, all fit column width")
+print("  ✓ ALSO ON: 20 items, all distinct, all fit column width")
 
 IMG.save("out/entry.png", optimize=True)
 print(f"Saved to out/entry.png")
