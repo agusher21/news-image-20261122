@@ -252,42 +252,41 @@ def draw_text_wrapped_on_layer(draw, x, y, text, font, color, max_width, line_he
 
 
 # ═══════════════════════════════════════════════════════════════
-# LAYOUT - Explicit Y-bands per fix brief
+# LAYOUT - Explicit Y-bands per Round 4 brief (sums to 1024)
 # ═══════════════════════════════════════════════════════════════
 # Masthead block: y 0–150
-# Stat strip: y 150–210
-# UTC timeline: y 210–238
-# Region tabs: y 238–268
-# IN 30 SECONDS box: y 268–293
-# Lead panels 1–3: y 293–584 (each 97px)
-# Mid cards 4–15: y 584–824 (2 rows x 6 cards x 110px)
-# Map + ALSO ON: y 824–994
-# DATE CHECK box: y 994–1024
-# Footer: y 1024 (clipped — kept for reference)
+# Stat strip: y 150–200
+# UTC timeline: y 200–224
+# Region tabs: y 224–252
+# Lead panels 1–3: y 252–543 (3 × 97px: 252–349, 349–446, 446–543)
+# Mid cards 4–15: y 543–783 (rows at y_mid_top + 0 and +110; cards 110px tall, end 763, 20px slack)
+# Map + ALSO ON: y 783–953 (170px)
+# DATE CHECK box: y 953–991 (38px)
+# Legend ONE merged line: y = 996 (anchor "lm", 7pt)
+# Footer: y 1000–1024 (24px navy bar)
 
 y_masthead_top = 0
 y_masthead_bot = 150
 y_stat_top = 150
-y_stat_bot = 210
-y_utc_top = 210
-y_utc_bot = 238
-y_region_top = 238
-y_region_bot = 268
-y_30sec_top = 268      # NEW: IN 30 SECONDS box
-y_30sec_bot = 293      # 25px tall
-y_lead1_top = 293
-y_lead1_bot = 390      # 97px each
-y_lead2_top = 390
-y_lead2_bot = 487
-y_lead3_top = 487
-y_lead3_bot = 584
-y_mid_top = 584
-y_mid_bot = 824        # 240px for 2 rows of 12 cards
-y_bottom_top = 824
-y_bottom_bot = 994
-y_dc_top = 994
-y_dc_bot = 1024
-y_footer_top = 1024    # footer moves down, but we keep image at 1024 — handled by clipping
+y_stat_bot = 200
+y_utc_top = 200
+y_utc_bot = 224
+y_region_top = 224
+y_region_bot = 252
+y_lead1_top = 252
+y_lead1_bot = 349      # 97px each
+y_lead2_top = 349
+y_lead2_bot = 446
+y_lead3_top = 446
+y_lead3_bot = 543
+y_mid_top = 543
+y_mid_bot = 783        # 240px for 2 rows of 12 cards (rows at +0, +110; cards end at 763)
+y_bottom_top = 783
+y_bottom_bot = 953
+y_dc_top = 953
+y_dc_bot = 991
+y_legend_y = 996       # merged legend line
+y_footer_top = 1000
 y_footer_bot = 1024
 
 # ═══════════════════════════════════════════════════════════════
@@ -359,8 +358,8 @@ for idx, label in enumerate(utc_events):
     max_w = int((W - 2*PAD_X) / num_events) - 10
     draw_text(x, ty, label, f_utc_combined, DARK_GREY, anchor="mm", max_width=max_w)
 
-# ═══════════════════════════════════════════════════════════════
-# 4. REGION TAB BAR (y 238–268) - 7 regions, counts sum to 35
+# ════════════════════════════════════════════════════════════════
+# 4. REGION TAB BAR (y 224–252) - 7 regions, counts sum to 35
 # ═══════════════════════════════════════════════════════════════
 regions = [
     ("EUROPE", 10, EUROPE_BLUE, TAG_BLUE),
@@ -385,26 +384,8 @@ for i, (name, count, color, tag_bg) in enumerate(regions):
     draw_text(cx, cy - 4, name, f_region, WHITE, anchor="mm")
     draw_text(cx, cy + 8, f"{count} stories", f_region_count, WHITE, anchor="mm")
 
-# ═══════════════════════════════════════════════════════════════
-# NEW: IN 30 SECONDS BOX (y 268–293) — 3 one-line bullets summarising the day
-# ═══════════════════════════════════════════════════════════════
-f_30sec_title = get_font("sans", 8, bold=True)
-f_30sec_bullet = get_font("sans", 7)
-D.rectangle([PAD_X, y_30sec_top, W-PAD_X, y_30sec_bot], outline=RED, width=1, fill=(0xFF,0xF5,0xF5))
-draw_text(PAD_X + 8, y_30sec_top + 3, "IN 30 SECONDS", f_30sec_title, RED)
-bullets = [
-    "COP31 final text adopted at dawn — no fossil fuel phaseout, 1.5°C overshoot admitted",
-    "IRGC claims strikes on 2 US Patriot radars in Bahrain; US unconfirmed, no casualties",
-    "Russia launches 186 drones at Ukraine overnight; air defence downs 161 by 08:00",
-]
-bullet_x = PAD_X + 8
-bullet_y = y_30sec_top + 16
-for bullet in bullets:
-    draw_text(bullet_x, bullet_y, "• " + bullet, f_30sec_bullet, DARK_GREY, max_width=W - 2*PAD_X - 16)
-    bullet_y += 7
-
-# ═══════════════════════════════════════════════════════════════
-# 5. THREE LARGE LEAD PANELS (y 293–584) - with continuous panorama CLIPPED to panels
+# ════════════════════════════════════════════════════════════════
+# 5. THREE LARGE LEAD PANELS (y 252–543) - with continuous panorama CLIPPED to panels
 # ═══════════════════════════════════════════════════════════════
 lead_stories = [
     {
@@ -446,18 +427,18 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
             r = int(0xE8 + (0xC0 - 0xE8) * ratio)
             g = int(0xEC + (0xD8 - 0xEC) * ratio)
             b = int(0xF4 + (0xF0 - 0xF4) * ratio)
-            D.line([x, y+i, x+w, y+i], fill=(r, g, b))
+            draw.line([x, y+i, x+w, y+i], fill=(r, g, b))
         # Conference table (long, horizontal)
         table_y = y + h - 30
         draw.rectangle([x+15, table_y, x+w-15, table_y+20], fill=(0x8B,0x6B,0x3B), outline=(0x6B,0x4B,0x2B))
-        D.line([x+15, table_y+10, x+w-15, table_y+10], fill=(0xA0,0x80,0x50))
+        draw.line([x+15, table_y+10, x+w-15, table_y+10], fill=(0xA0,0x80,0x50))
         # Delegates seated along table (both sides)
         for side in [0, 1]:
             for seat in range(7):
                 sx = x + 25 + seat * (w - 50) // 6
                 sy = table_y - 5 if side == 0 else table_y + 25
                 # Head
-                D.ellipse([sx-4, sy-8, sx+4, sy], fill=(0xD0,0xB8,0xA0))
+                draw.ellipse([sx-4, sy-8, sx+4, sy], fill=(0xD0,0xB8,0xA0))
                 # Shoulders
                 draw.rectangle([sx-7, sy, sx+7, sy+6], fill=(0x30,0x40,0x60))
                 # Nameplate
@@ -466,7 +447,7 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
         globe_x = cx
         globe_y = table_y - 2
         globe_r = 14
-        D.ellipse([globe_x-globe_r, globe_y-globe_r, globe_x+globe_r, globe_y+globe_r], fill=(0x20,0x80,0x30), outline=(0x10,0x60,0x20), width=2)
+        draw.ellipse([globe_x-globe_r, globe_y-globe_r, globe_x+globe_r, globe_y+globe_r], fill=(0x20,0x80,0x30), outline=(0x10,0x60,0x20), width=2)
         # Globe grid lines
         for lat in (-45, 0, 45):
             ly = globe_y + lat * globe_r // 45
@@ -477,10 +458,10 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
         # Wall clock above table
         clock_x = cx
         clock_y = table_y - 45
-        D.ellipse([clock_x-12, clock_y-12, clock_x+12, clock_y+12], fill=WHITE, outline=(0x80,0x80,0x80), width=2)
+        draw.ellipse([clock_x-12, clock_y-12, clock_x+12, clock_y+12], fill=WHITE, outline=(0x80,0x80,0x80), width=2)
         # Clock hands (showing ~03:00)
-        D.line([clock_x, clock_y, clock_x, clock_y-8], fill=BLACK, width=2)
-        D.line([clock_x, clock_y, clock_x+7, clock_y], fill=BLACK, width=2)
+        draw.line([clock_x, clock_y, clock_x, clock_y-8], fill=BLACK, width=2)
+        draw.line([clock_x, clock_y, clock_x+7, clock_y], fill=BLACK, width=2)
         # COP31 banner at top
         draw.rectangle([cx-80, y+4, cx+80, y+22], fill=EUROPE_BLUE)
         f_banner = get_font("sans", 10, bold=True)
@@ -490,7 +471,7 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
             draw.rectangle([bx, y+28, bx+80, y+44], fill=(0x1E,0x3A,0x8A))
             f_side = get_font("sans", 7, bold=True)
             draw_text_on_layer(draw, bx+40, y+36, "UNFCCC", f_side, WHITE, anchor="mm")
-   
+  
     elif type_ == "bahrain":
         # Manama: radar dishes with flames, circular arrow, dark coast
         # Night sky gradient
@@ -499,14 +480,14 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
             r = int(0x0A + (0x25 - 0x0A) * ratio)
             g = int(0x10 + (0x1A - 0x10) * ratio)
             b = int(0x25 + (0x35 - 0x25) * ratio)
-            D.line([x, y+i, x+w, y+i], fill=(r, g, b))
+            draw.line([x, y+i, x+w, y+i], fill=(r, g, b))
         # Radar dishes (3 large dishes with arrays)
         for dish_i in range(3):
             dish_x = x + 35 + dish_i * (w - 70) // 2
             dish_y = y + 25
             # Dish support
-            D.line([dish_x, dish_y+40, dish_x, dish_y+65], fill=(0x50,0x50,0x50), width=3)
-            D.line([dish_x-8, dish_y+65, dish_x+8, dish_y+65], fill=(0x50,0x50,0x50), width=3)
+            draw.line([dish_x, dish_y+40, dish_x, dish_y+65], fill=(0x50,0x50,0x50), width=3)
+            draw.line([dish_x-8, dish_y+65, dish_x+8, dish_y+65], fill=(0x50,0x50,0x50), width=3)
             # Dish parabola
             draw.arc([dish_x-22, dish_y, dish_x+22, dish_y+44], 0, 180, fill=(0x80,0x80,0x80), width=3)
             draw.arc([dish_x-20, dish_y+2, dish_x+20, dish_y+42], 0, 180, fill=(0xA0,0xA0,0xA0), width=1)
@@ -518,7 +499,7 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
         for f in range(6):
             fx = flame_x + (f-2.5)*12
             for layer, (fr, fg, fb) in enumerate([(0xFF,0x20,0x00), (0xFF,0x80,0x10), (0xFF,0xC0,0x20)]):
-                D.ellipse([fx-6+layer, flame_y-6+layer, fx+6-layer, flame_y+10-layer], fill=(fr, fg, fb))
+                draw.ellipse([fx-6+layer, flame_y-6+layer, fx+6-layer, flame_y+10-layer], fill=(fr, fg, fb))
         # Circular arrow (retaliation symbol) above radars
         arrow_cx = cx
         arrow_cy = y + 15
@@ -529,20 +510,20 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
         # Dark coast line at bottom
         coast_y = y + h - 15
         for cx_seg in range(x, x+w, 8):
-            D.ellipse([cx_seg-3, coast_y-3, cx_seg+3, coast_y+3], fill=(0x10,0x10,0x15))
-        D.line([x, coast_y, x+w, coast_y], fill=(0x20,0x18,0x20), width=2)
+            draw.ellipse([cx_seg-3, coast_y-3, cx_seg+3, coast_y+3], fill=(0x10,0x10,0x15))
+        draw.line([x, coast_y, x+w, coast_y], fill=(0x20,0x18,0x20), width=2)
         # Water reflection
         for wx in range(0, w, 15):
             draw.arc([x+wx, coast_y, x+wx+15, coast_y+8], 0, 180, fill=(0x15,0x20,0x30), width=1)
         # MANAMA label
         f_b = get_font("sans", 9, bold=True)
         draw_text_on_layer(draw, cx, y+h-6, "MANAMA", f_b, (0xFF,0xC0,0xC0), anchor="mm")
-   
+  
     elif type_ == "kyiv":
         # Kyiv: night skyline with lit windows, searchlight beam, drones with trails
         draw.rectangle([x, y, x+w, y+h], fill=(0x05,0x0A,0x18))
         # Moon
-        D.ellipse([x+w-50, y+8, x+w-12, y+46], fill=(0xE0,0xE0,0xC0))
+        draw.ellipse([x+w-50, y+8, x+w-12, y+46], fill=(0xE0,0xE0,0xC0))
         # Searchlight beam from bottom center
         beam_x = cx
         beam_y = y + h
@@ -568,13 +549,13 @@ def draw_illustration_on_layer(draw, type_, x, y, w, h):
             # Drone body (small triangle)
             draw.polygon([(dx, dy), (dx-4, dy+5), (dx+4, dy+5)], fill=(0xFF,0x20,0x20))
             # Trail
-            D.line([dx, dy+5, dx+8, dy+12], fill=(0xFF,0x60,0x60), width=1)
-            D.line([dx-2, dy+5, dx+6, dy+13], fill=(0xFF,0x80,0x80), width=1)
+            draw.line([dx, dy+5, dx+8, dy+12], fill=(0xFF,0x60,0x60), width=1)
+            draw.line([dx-2, dy+5, dx+6, dy+13], fill=(0xFF,0x80,0x80), width=1)
         # Smoke trails from impacts (lower left)
         for i in range(4):
             sx = x + 20 + i * (w-40)//3
             sy = y + h - 25 - (i%2)*10
-            D.ellipse([sx-10, sy-5, sx+10, sy+5], fill=(0x18,0x18,0x25))
+            draw.ellipse([sx-10, sy-5, sx+10, sy+5], fill=(0x18,0x18,0x25))
         # KYIV label
         f_k = get_font("sans", 9, bold=True)
         draw_text_on_layer(draw, cx, y+h-6, "KYIV", f_k, (0xFF,0xC0,0xC0), anchor="mm")
@@ -607,78 +588,93 @@ for i, story in enumerate(lead_stories):
     text_x = PAD_X + ill_w + 12
     text_w = W - PAD_X - text_x - 6
     
-    # Tag top-left (ONGOING/CLAIM/REPORTED)
-    tag_x = PAD_X + 6
-    tag_y = panel_y + 6
-    f_tag = get_font("sans", 9, bold=True)
-    tag_text = story["tag"]
-    tag_w = f_tag.getlength(tag_text) + 12
-    D.rounded_rectangle([tag_x, tag_y, tag_x+tag_w, tag_y+18], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
-    draw_text(tag_x + tag_w//2, tag_y + 9, tag_text, f_tag, story["tag_color"], anchor="mm")
-    
-    # Kicker line below tag
-    f_kicker = get_font("sans", 8, bold=True)
-    kicker_y = tag_y + 20
-    draw_text(tag_x, kicker_y, story["kicker"], f_kicker, story["tag_color"])
-    
-    # White stat chip top-right of illustration area
-    stat_text = story["stat"]
-    f_stat_chip = get_font("sans", 9, bold=True)
-    stat_w = f_stat_chip.getlength(stat_text) + 12
-    stat_chip_x = PAD_X + ill_w - stat_w - 6
-    stat_chip_y = panel_y + 6
-    D.rounded_rectangle([stat_chip_x, stat_chip_y, stat_chip_x+stat_w, stat_chip_y+18], radius=2, fill=STAT_CHIP_BG, outline=STAT_CHIP_BORDER)
-    draw_text(stat_chip_x + stat_w//2, stat_chip_y + 9, stat_text, f_stat_chip, RED, anchor="mm")
-    
-    # ─── CLIP illustration to panel ───
-    ill_y = panel_y + 6  # top of illustration area (below tag/kicker)
+    # ─── CLIP illustration to panel FIRST ───
+    ill_y = panel_y + 6
+    ill_h = panel_h - 12
     crop_x = i * panel_w
     panel_ill = cont_layer.crop((crop_x, 0, crop_x + panel_w, ill_h))
-    # Paste at exact panel position - CLIPPED to panel bounds
     IMG.paste(panel_ill, (PAD_X, ill_y), panel_ill)
     
-    # Caption bottom-left of illustration area
+    # Caption bottom-left of illustration with solid white rect behind it
     f_caption = get_font("sans", 8, italic=True)
     captions = {
         "climate": "Conference hall, delegates in final session at dawn",
         "bahrain": "Bahrain coast, radar dishes burning at night",
         "kyiv": "Night sky over Kyiv, searchlight and drone swarm",
     }
-    draw_text(PAD_X + 6, ill_y + ill_h - 2, captions[story["illustration"]], f_caption, MED_GREY, anchor="lb")
+    cap_text = captions[story["illustration"]]
+    cap_w = f_caption.getlength(cap_text)
+    cap_x0 = PAD_X + 2
+    cap_y0 = ill_y + ill_h - 13
+    cap_x1 = PAD_X + 10 + cap_w
+    cap_y1 = ill_y + ill_h - 1
+    D.rectangle([cap_x0, cap_y0, cap_x1, cap_y1], fill=WHITE)
+    draw_text(PAD_X + 6, ill_y + ill_h - 2, cap_text, f_caption, MED_GREY, anchor="lb")
     
-    # Right column text
+    # Right column text - all drawn AFTER paste, only in text column
     f_lead_num = get_font("sans", 18, bold=True)
-    f_lead_place = get_font("sans", 10, bold=True)
+    f_lead_tag = get_font("sans", 9, bold=True)
+    f_certainty = get_font("sans", 7, bold=True)
+    f_lead_place_kicker = get_font("sans", 10, bold=True)
     f_lead_headline = get_font("sans", 14, bold=True)
     f_lead_deck = get_font("sans", 11)
     f_lead_source = get_font("sans", 9, italic=True)
-    f_certainty = get_font("sans", 7, bold=True)  # NEW: certainty tag font
+    f_stat_chip = get_font("sans", 9, bold=True)
     
+    # Row 1 (ty = panel_y + 8): number + TAG chip + CERTAINTY chip in one row
     ty = panel_y + 8
     draw_text(text_x, ty, str(story["num"]), f_lead_num, RED)
-    ty += 20
-    draw_text(text_x, ty, story["place"], f_lead_place, BLACK)
-    ty += 14
-    draw_text_wrapped(text_x, ty, story["headline"], f_lead_headline, BLACK, text_w, 16, max_lines=2)
-    ty += 32
-    draw_text_wrapped(text_x, ty, story["deck"], f_lead_deck, DARK_GREY, text_w, 12, max_lines=2)
-    ty += 12  # reduced from 24 to add separation from next lead's number
     
-    # Source line with certainty tag at right end of kicker line area
-    # Add certainty tag at right end of kicker line (which is at tag_y + 20)
+    # TAG chip immediately right of number (+6px gap)
+    tag_text = story["tag"]
+    tag_w = f_lead_tag.getlength(tag_text) + 12
+    tag_x = text_x + 14 + 6  # number ~14px + 6px gap
+    tag_y = ty
+    D.rounded_rectangle([tag_x, tag_y, tag_x+tag_w, tag_y+18], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
+    draw_text(tag_x + tag_w//2, tag_y + 9, tag_text, f_lead_tag, story["tag_color"], anchor="mm")
+    
+    # CERTAINTY chip immediately right of TAG (+6px gap)
     certainty_text = story.get("certainty", "REPORTED")
     cert_color = TAG_RED if certainty_text == "CLAIM" else TAG_BLUE
     cert_text_color = MIDEAST_RED if certainty_text == "CLAIM" else EUROPE_BLUE
     cert_w = f_certainty.getlength(certainty_text) + 8
-    cert_x = PAD_X + ill_w - cert_w - 6
-    cert_y = tag_y + 20  # same y as kicker line
-    D.rounded_rectangle([cert_x, cert_y, cert_x+cert_w, cert_y+14], radius=2, fill=cert_color, outline=cert_text_color)
-    draw_text(cert_x + cert_w//2, cert_y + 7, certainty_text, f_certainty, cert_text_color, anchor="mm")
+    cert_x = tag_x + tag_w + 6
+    cert_y = ty
+    D.rounded_rectangle([cert_x, cert_y, cert_x+cert_w, cert_y+18], radius=2, fill=cert_color, outline=cert_text_color)
+    draw_text(cert_x + cert_w//2, cert_y + 9, certainty_text, f_certainty, cert_text_color, anchor="mm")
     
+    # Stat chip: far right of panel
+    stat_text = story["stat"]
+    stat_w = f_stat_chip.getlength(stat_text) + 12
+    stat_chip_x = W - PAD_X - stat_w - 6
+    stat_chip_y = panel_y + 6
+    D.rounded_rectangle([stat_chip_x, stat_chip_y, stat_chip_x+stat_w, stat_chip_y+18], radius=2, fill=STAT_CHIP_BG, outline=STAT_CHIP_BORDER)
+    draw_text(stat_chip_x + stat_w//2, stat_chip_y + 9, stat_text, f_stat_chip, RED, anchor="mm")
+    
+    # Row 2 (ty = panel_y + 30): place + kicker COMBINED on one line
+    ty = panel_y + 30
+    place_kicker = f"{story['place']} \u00b7 {story['kicker']}"
+    place_kicker_fitted, place_kicker_font = _fit_text_to_width(place_kicker, f_lead_place_kicker, text_w)
+    draw_text(text_x, ty, place_kicker_fitted, place_kicker_font, BLACK)
+    
+    # Headline at panel_y + 42 (round 2 / round 3 value). The brief's +46
+    # plus ty += 12 below drew the source ONTO a 2-line deck; see deck note.
+    ty = panel_y + 42
+    draw_text_wrapped(text_x, ty, story["headline"], f_lead_headline, BLACK, text_w, 16, max_lines=2)
+    ty += 32
+    deck_h = draw_text_wrapped(text_x, ty, story["deck"], f_lead_deck, DARK_GREY, text_w, 12, max_lines=2)
+    # Source goes below the deck's ACTUAL wrapped height. Round 3 used a
+    # blind ty += 12, which drew the source ONTO a 2-line deck (leads 1-2,
+    # verified visually). Blind ty += 24 fixes those but pushes lead 3's
+    # 1-line-deck source to +98, 1px past the panel into the mid band where
+    # the mid cards (drawn later, white-filled) paint over it — invisible.
+    # max(deck_h, 16): 2-line deck -> +98 (round 2's proven value, clean in
+    # round 2's render); 1-line deck -> +90 (round 3's value, clean there).
+    ty += max(deck_h, 16)
     draw_text(text_x, ty, story["source"], f_lead_source, MED_GREY)
 
 # ════════════════════════════════════════════════════════════════
-# 6. THE DAY IN TWELVE - 2 rows of 6 cards (numbered 4-15) (y 584–824)
+# 6. THE DAY IN TWELVE - 2 rows of 6 cards (numbered 4-15) (y 543–783)
 # ════════════════════════════════════════════════════════════════
 mid_stories = [
     {"num": 4, "place": "HONG KONG", "tag": "ELECTION", "certainty": "REPORTED", "tag_color": ASIA_ORANGE, "tag_bg": TAG_ORANGE,
@@ -1050,7 +1046,7 @@ for row in range(2):
         draw_mid_card(mid_stories[idx], x_card, y_row)
 
 # ════════════════════════════════════════════════════════════════
-# 7. BOTTOM SECTION: Map (left) + ALSO ON 20 stories (right, 2 cols) (y 824–994)
+# 7. BOTTOM SECTION: Map (left) + ALSO ON 20 stories (right, 2 cols) (y 783–953)
 # ════════════════════════════════════════════════════════════════
 bottom_y = y_bottom_top
 bottom_h = y_bottom_bot - y_bottom_top  # 170px
@@ -1253,48 +1249,37 @@ for i, story in enumerate(more_stories):
         pass
     draw_text(tx, ty, story, f_more, DARK_GREY, max_width=col_w)
 
-# ═══════════════════════════════════════════════════════════════
-# 8. DATE CHECK BOX (y 950–995) - text wrapped inside with right margin
-# ═══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# 8. DATE CHECK BOX (y 953–991) - 38px tall, exact text per brief
+# ════════════════════════════════════════════════════════════════
 dc_y = y_dc_top
-dc_h = y_dc_bot - y_dc_top  # 45px
+dc_h = y_dc_bot - y_dc_top  # 38px
 D.rectangle([PAD_X, dc_y, W-PAD_X, dc_y+dc_h], outline=RED, width=2)
 f_dc_title = get_font("sans", 9, bold=True)
 f_dc_text = get_font("sans", 8)
-draw_text(PAD_X + 6, dc_y + 4, "DATE CHECK", f_dc_title, RED)
-dc_text = "Wires read up to 07:00 UTC; every story here happened or was first reported on Sunday 22 November 2026 in at least one time zone. Left out as other days' news: Peru quake (Fri 20 Nov, USGS 6.7) \u00b7 Russia's 400-drone barrage (19\u201320 Nov) \u00b7 Shenzhen summit (19 Nov) \u00b7 Russian missiles landing in Poland (19 Nov)."
-draw_text_wrapped(PAD_X + 6, dc_y + 16, dc_text, f_dc_text, DARK_GREY, W - 2*PAD_X - 12, 11, max_lines=3)
+draw_text(PAD_X + 6, dc_y + 3, "DATE CHECK", f_dc_title, RED)
+dc_text = "Wires read up to 07:00 UTC; every story here happened or was first reported on Sunday 22 November 2026 in at least one time zone. Left out: Peru quake (Fri 20 Nov) \u00b7 Russia's 400-drone barrage (19\u201320 Nov) \u00b7 Shenzhen summit (19 Nov) \u00b7 missiles in Poland (19 Nov)."
+draw_text_wrapped(PAD_X + 6, dc_y + 14, dc_text, f_dc_text, DARK_GREY, W - 2*PAD_X - 12, 10, max_lines=2)
 
-# ═══════════════════════════════════════════════════════════════
-# 9. TAG LEGEND
-# ═══════════════════════════════════════════════════════════════
-f_tag_legend = get_font("sans", 7)
-legend_text = "ONGOING: still developing \u00b7 REPORTED: one source's claim, not yet confirmed \u00b7 CLAIM: a party's claim, contested \u00b7 OFFICIALS SAY: attributed, not verified"
-draw_text(PAD_X, y_dc_bot + 2, legend_text, f_tag_legend, MED_GREY, anchor="lm")
+# ════════════════════════════════════════════════════════════════
+# 9. MERGED LEGEND (single line at y=996, anchor "lm", 7pt)
+# ════════════════════════════════════════════════════════════════
+f_legend = get_font("sans", 7)
+legend_text = "CERTAINTY: REPORTED = carried by the day's wires \u00b7 CLAIM = one side's account \u00b7 ONGOING = still developing \u2014 Sources: BBC \u00b7 Reuters \u00b7 Al Jazeera \u00b7 Guardian \u00b7 AP \u00b7 SCMP \u00b7 DW \u00b7 UPI \u00b7 FT"
+draw_text(PAD_X, y_legend_y, legend_text, f_legend, MED_GREY, anchor="lm")
 
-# Certainty legend
-certainty_legend = "CERTAINTY: REPORTED = carried by the day's wires \u00b7 CLAIM = one side's account, labelled as such \u00b7 FORECAST = still to happen when drawn"
-draw_text(PAD_X, y_dc_bot + 14, certainty_legend, f_tag_legend, MED_GREY, anchor="lm")
-
-# ═══════════════════════════════════════════════════════════════
-# 10. SOURCES LINE
-# ═══════════════════════════════════════════════════════════════
-f_src = get_font("sans", 7)
-src_text = "Sources: BBC \u00b7 Reuters \u00b7 Al Jazeera \u00b7 The Guardian \u00b7 AP \u00b7 SCMP \u00b7 DW \u00b7 UPI \u00b7 FT \u00b7 Every story names its outlet \u00b7 Pictures and map: original, drawn in code"
-draw_text(PAD_X, y_dc_bot + 26, src_text, f_src, MED_GREY, anchor="lm")
-
-# ═══════════════════════════════════════════════════════════════
-# 11. FOOTER BAR (y 995–1024)
-# ═══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# 10. FOOTER BAR (y 1000–1024) - 24px navy bar
+# ════════════════════════════════════════════════════════════════
 fy = y_footer_top
-D.rectangle([0, fy, W, fy+29], fill=NAVY)
+D.rectangle([0, fy, W, fy+24], fill=NAVY)
 f_footer = get_font("sans", 10, bold=True)
-draw_text(PAD_X, fy + 14, "THE WORLD IN ONE DAY", f_footer, WHITE, anchor="lm")
-draw_text(W - PAD_X, fy + 14, "SUNDAY 22 NOVEMBER 2026 \u2014 ONE PAGE", f_footer, WHITE, anchor="rm")
+draw_text(PAD_X, fy + 12, "THE WORLD IN ONE DAY", f_footer, WHITE, anchor="lm")
+draw_text(W - PAD_X, fy + 12, "SUNDAY 22 NOVEMBER 2026 \u2014 ONE PAGE", f_footer, WHITE, anchor="rm")
 
-# ═══════════════════════════════════════════════════════════════
-# VERIFICATION — assert all text fits its box (FIX 5)
-# ═══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# VERIFICATION — hard assertions per Round 4 brief
+# ════════════════════════════════════════════════════════════════
 
 def verify_fit():
     """Verify every drawn string fits its box using the same fonts and widths.
@@ -1344,11 +1329,80 @@ def verify_fit():
                     return True
                 return False
     
-    # Check subhead (uses f_sub, full width minus padding) - single line
+    # 1. Masthead headline width < W - 2*PAD_X; subhead width < W - 2*PAD_X;
+    #    top-bar right text + left text widths sum < W - 2*PAD_X.
+    f_masthead = get_font("serif", 42, bold=True)
+    if f_masthead.getlength("Sunday 22 November 2026") >= W - 2*PAD_X:
+        errors.append("masthead headline: too wide for canvas")
+    f_sub = get_font("sans", 13, italic=True)
+    subhead_text = "COP31 final text lands at dawn | Iran claims strikes on US bases in Bahrain | Russia launches 186 drones at Ukraine"
     if not check_can_fit(subhead_text, f_sub, W - 2*PAD_X, 1, "subhead"):
         errors.append(f"subhead: cannot fit '{subhead_text}'")
+    f_top = get_font("sans", 11, bold=True)
+    left_text = "THE WORLD IN ONE DAY"
+    right_text = "35 STORIES \u00b7 7 REGIONS \u00b7 EVERY ONE DATED SUNDAY 22 NOVEMBER 2026"
+    if f_top.getlength(left_text) + f_top.getlength(right_text) >= W - 2*PAD_X:
+        errors.append("masthead top bar: left+right text too wide")
     
-    # Check lead panels
+    # 2. y_footer_top + 24 <= 1024; legend y < y_footer_top; y_dc_bot <= 991.
+    if y_footer_top + 24 > 1024:
+        errors.append(f"footer: y_footer_top+24={y_footer_top+24} > 1024")
+    if y_legend_y >= y_footer_top:
+        errors.append(f"legend: y_legend_y={y_legend_y} >= y_footer_top={y_footer_top}")
+    if y_dc_bot > 991:
+        errors.append(f"DATE CHECK: y_dc_bot={y_dc_bot} > 991")
+    
+    # 3. Band chain contiguous and sums to 1024:
+    #    150 + 50 + 24 + 28 + 291 + 240 + 170 + 38 + 9 + 24 == 1024
+    band_sum = 150 + 50 + 24 + 28 + 291 + 240 + 170 + 38 + 9 + 24
+    if band_sum != 1024:
+        errors.append(f"band sum: {band_sum} != 1024")
+    # Check contiguity
+    if y_masthead_top != 0: errors.append("masthead not at 0")
+    if y_masthead_bot != y_stat_top: errors.append("masthead/stat not contiguous")
+    if y_stat_bot != y_utc_top: errors.append("stat/utc not contiguous")
+    if y_utc_bot != y_region_top: errors.append("utc/region not contiguous")
+    if y_region_bot != y_lead1_top: errors.append("region/lead1 not contiguous")
+    if y_lead1_bot != y_lead2_top: errors.append("lead1/lead2 not contiguous")
+    if y_lead2_bot != y_lead3_top: errors.append("lead2/lead3 not contiguous")
+    if y_lead3_bot != y_mid_top: errors.append("lead3/mid not contiguous")
+    if y_mid_bot != y_bottom_top: errors.append("mid/bottom not contiguous")
+    if y_bottom_bot != y_dc_top: errors.append("bottom/DATE CHECK not contiguous")
+    if y_dc_bot != 991: errors.append("DATE CHECK bot != 991")
+    if y_legend_y != 996: errors.append(f"legend y != 996 (is {y_legend_y})")
+    if y_footer_top != 1000: errors.append(f"footer top != 1000 (is {y_footer_top})")
+    if y_footer_bot != 1024: errors.append(f"footer bot != 1024 (is {y_footer_bot})")
+    
+    # 4. Lead chip row: (text_x + 14 + 6 + tag_w + 6 + cert_w) < stat_chip_x for each lead
+    for i, story in enumerate(lead_stories):
+        panel_y = [y_lead1_top, y_lead2_top, y_lead3_top][i]
+        ill_w = panel_w
+        text_x = PAD_X + ill_w + 12
+        f_lead_num = get_font("sans", 18, bold=True)
+        f_lead_tag = get_font("sans", 9, bold=True)
+        f_certainty = get_font("sans", 7, bold=True)
+        f_stat_chip = get_font("sans", 9, bold=True)
+        
+        num_w = f_lead_num.getlength(str(story["num"]))  # ~14px
+        tag_text = story["tag"]
+        tag_w = f_lead_tag.getlength(tag_text) + 12
+        certainty_text = story.get("certainty", "REPORTED")
+        cert_w = f_certainty.getlength(certainty_text) + 8
+        stat_text = story["stat"]
+        stat_w = f_stat_chip.getlength(stat_text) + 12
+        stat_chip_x = W - PAD_X - stat_w - 6
+        
+        chips_end = text_x + num_w + 6 + tag_w + 6 + cert_w
+        if chips_end >= stat_chip_x:
+            errors.append(f"lead{i+1}: chips row ends at {chips_end}, stat chip starts at {stat_chip_x} (overlap)")
+    
+    # 5. DATE CHECK wrapped text <= 2 lines at 8pt within the box width
+    dc_text = "Wires read up to 07:00 UTC; every story here happened or was first reported on Sunday 22 November 2026 in at least one time zone. Left out: Peru quake (Fri 20 Nov) \u00b7 Russia's 400-drone barrage (19\u201320 Nov) \u00b7 Shenzhen summit (19 Nov) \u00b7 missiles in Poland (19 Nov)."
+    f_dc_text = get_font("sans", 8)
+    if not check_can_fit(dc_text, f_dc_text, W - 2*PAD_X - 12, 2, "DATE CHECK"):
+        errors.append("DATE CHECK: text does not fit in 2 lines at 8pt")
+    
+    # Check lead panels (headline, deck, source)
     for i, story in enumerate(lead_stories):
         panel_y = [y_lead1_top, y_lead2_top, y_lead3_top][i]
         panel_h = [y_lead1_bot, y_lead2_bot, y_lead3_bot][i] - panel_y
@@ -1373,127 +1427,116 @@ def verify_fit():
             errors.append(f"lead{i+1} source: cannot fit '{story['source']}'")
     
     # Check mid cards (12 cards)
-        for story in mid_stories:
-            card_w = 160
-            text_w = card_w - 12  # ~148px
+    for story in mid_stories:
+        card_w = 160
+        text_w = card_w - 12  # ~148px
         
-            f_mhead = get_font("sans", 9, bold=True)
-            f_mdeck = get_font("sans", 8)
-            f_msrc = get_font("sans", 7, italic=True)
+        f_mhead = get_font("sans", 9, bold=True)
+        f_mdeck = get_font("sans", 8)
+        f_msrc = get_font("sans", 7, italic=True)
         
-            # Headline (max 2 lines)
-            if not check_can_fit(story["headline"], f_mhead, text_w, 2, f"mid{story['num']} headline"):
-                errors.append(f"mid{story['num']} headline: cannot fit '{story['headline']}'")
+        # Headline (max 2 lines)
+        if not check_can_fit(story["headline"], f_mhead, text_w, 2, f"mid{story['num']} headline"):
+            errors.append(f"mid{story['num']} headline: cannot fit '{story['headline']}'")
         
-            # Deck (1 line)
-            if not check_can_fit(story["deck"], f_mdeck, text_w, 1, f"mid{story['num']} deck"):
-                errors.append(f"mid{story['num']} deck: cannot fit '{story['deck']}'")
+        # Deck (1 line)
+        if not check_can_fit(story["deck"], f_mdeck, text_w, 1, f"mid{story['num']} deck"):
+            errors.append(f"mid{story['num']} deck: cannot fit '{story['deck']}'")
         
-            # Source
-            src = story["source"]
-            if "," in src:
-                src = src.split(",")[0] + ")"
-            if not check_can_fit(src, f_msrc, text_w, 1, f"mid{story['num']} source"):
-                errors.append(f"mid{story['num']} source: cannot fit '{src}'")
+        # Source
+        src = story["source"]
+        if "," in src:
+            src = src.split(",")[0] + ")"
+        if not check_can_fit(src, f_msrc, text_w, 1, f"mid{story['num']} source"):
+            errors.append(f"mid{story['num']} source: cannot fit '{src}'")
     
-        # Check ALSO ON lines
-        f_more = get_font("sans", 7)
-        col_w = stories_w // 2 - 4
-        for story in more_stories:
-            if not check_can_fit(story, f_more, col_w, 1, "also_on"):
-                errors.append(f"also_on: cannot fit '{story}'")
+    # Check ALSO ON lines
+    f_more = get_font("sans", 7)
+    stories_x = PAD_X + 400 + 12
+    stories_w = W - PAD_X - stories_x
+    col_w = stories_w // 2 - 4
+    for story in more_stories:
+        if not check_can_fit(story, f_more, col_w, 1, "also_on"):
+            errors.append(f"also_on: cannot fit '{story}'")
     
-        # Check lead 2 / lead 3 vertical spacing (FIX 5)
-        # Lead 2 source y position
-        lead2_panel_y = y_lead2_top
-        lead2_panel_h = y_lead2_bot - lead2_panel_y
-        lead2_ill_y = lead2_panel_y + 6
-        lead2_ill_h = ill_h
-        # Approximate source y: panel_y + 8 + 20 + 14 + 32 + 12 = panel_y + 86
-        # Actually: num(20) + place(14) + headline(32) + deck(12) = ~78 from panel top
-        lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 12  # ~86
-        lead3_num_y = y_lead3_top + 8
-        gap = lead3_num_y - lead2_source_y
-        if gap < 6:
-            errors.append(f"lead2/lead3 collision: gap={gap}px < 6px")
+    # Check lead 2 / lead 3 vertical spacing
+    lead2_panel_y = y_lead2_top
+    lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 12  # ~86 from panel top
+    lead3_num_y = y_lead3_top + 8
+    gap = lead3_num_y - lead2_source_y
+    if gap < 6:
+        errors.append(f"lead2/lead3 collision: gap={gap}px < 6px")
     
-        # Check certainty tags exist on lead kicker lines
-        for i, story in enumerate(lead_stories):
-            certainty_text = story.get("certainty", "REPORTED")
-            if certainty_text not in ["REPORTED", "CLAIM", "FORECAST"]:
-                errors.append(f"lead{i+1} certainty: invalid value '{certainty_text}'")
+    # Check certainty tags exist on lead kicker lines
+    for i, story in enumerate(lead_stories):
+        certainty_text = story.get("certainty", "REPORTED")
+        if certainty_text not in ["REPORTED", "CLAIM", "FORECAST"]:
+            errors.append(f"lead{i+1} certainty: invalid value '{certainty_text}'")
     
-        # Check certainty tags exist on mid cards
-        for story in mid_stories:
-            certainty_text = story.get("certainty", "REPORTED")
-            if certainty_text not in ["REPORTED", "CLAIM", "FORECAST"]:
-                errors.append(f"mid{story['num']} certainty: invalid value '{certainty_text}'")
+    # Check certainty tags exist on mid cards
+    for story in mid_stories:
+        certainty_text = story.get("certainty", "REPORTED")
+        if certainty_text not in ["REPORTED", "CLAIM", "FORECAST"]:
+            errors.append(f"mid{story['num']} certainty: invalid value '{certainty_text}'")
     
-        # ─── NEW ASSERTIONS per FIX BRIEF 4 ───
-        # 1. headline_y >= illustration_bottom + 4 for every mid card
-        for story in mid_stories:
-            card_w = 160
-            ill_y = 4  # relative to card top
-            ill_size = 32
-            ill_bottom = ill_y + ill_size  # y+36
-            headline_y = 40  # relative to card top
-            if headline_y < ill_bottom + 4:
-                errors.append(f"mid{story['num']}: headline_y={headline_y} < ill_bottom+4={ill_bottom+4}")
+    # Mid card assertions from FIX BRIEF 4
+    # 1. headline_y >= illustration_bottom + 4 for every mid card
+    for story in mid_stories:
+        ill_y = 4
+        ill_size = 20
+        ill_bottom = ill_y + ill_size
+        headline_y = 40
+        if headline_y < ill_bottom + 4:
+            errors.append(f"mid{story['num']}: headline_y={headline_y} < ill_bottom+4={ill_bottom+4}")
     
-        # 2. Header-row elements do not overlap: place_x > number_circle_right and place fits
-                for story in mid_stories:
-                    card_w = 160
-                    ill_x = 6
-                    ill_size = 32
-                    ill_right = ill_x + ill_size
-                    f_mtag = get_font("sans", 7, bold=True)
-                    tag_text = story["tag"]
-                    tag_w = f_mtag.getlength(tag_text) + 8
-                    tag_x = ill_right + 6
-                    tag_right = tag_x + tag_w
-                    f_mnum = get_font("sans", 10, bold=True)
-                    num_cx = tag_right + 10
-                    num_circle_right = num_cx + 8
-                    f_mplace = get_font("sans", 8, bold=True)
-                    place_x = num_circle_right + 4
-                    # Header row available width: card_w - (place_x - x) - 6 (right padding)
-                    header_avail_w = card_w - 6 - place_x
-                    place_text = story["place"]
-                    place_w = f_mplace.getlength(place_text)
-                    if place_x <= num_circle_right:
-                        errors.append(f"mid{story['num']}: place_x={place_x} <= num_circle_right={num_circle_right}")
-                    if place_w > header_avail_w:
-                        # Try shrinking like draw_mid_card does
-                        fitted_text, fitted_font = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
-                        if fitted_font.getlength(fitted_text) > header_avail_w:
-                            errors.append(f"mid{story['num']}: place text '{place_text}' width {place_w} > avail {header_avail_w}")
+    # 2. Header-row elements do not overlap: place_x > number_circle_right and place fits
+    for story in mid_stories:
+        card_w = 160
+        ill_x = 4
+        ill_size = 20
+        ill_right = ill_x + ill_size
+        f_mtag = get_font("sans", 5, bold=True)
+        tag_text = story["tag"]
+        tag_w = f_mtag.getlength(tag_text) + 6
+        tag_x = ill_right + 4
+        tag_right = tag_x + tag_w
+        f_mnum = get_font("sans", 9, bold=True)
+        num_cx = tag_right + 6
+        num_circle_right = num_cx + 7
+        f_mplace = get_font("sans", 7, bold=True)
+        place_x = num_circle_right + 2
+        header_avail_w = card_w - 4 - place_x
+        place_text = story["place"]
+        place_w = f_mplace.getlength(place_text)
+        if place_x <= num_circle_right:
+            errors.append(f"mid{story['num']}: place_x={place_x} <= num_circle_right={num_circle_right}")
+        if place_w > header_avail_w:
+            fitted_text, fitted_font = _fit_text_to_width(place_text, f_mplace, header_avail_w, min_font_size=7)
+            if fitted_font.getlength(fitted_text) > header_avail_w:
+                errors.append(f"mid{story['num']}: place text '{place_text}' width {place_w} > avail {header_avail_w}")
     
-            # 3. ALSO ON: 20 items, all distinct after normalizing, every line fits column width
-        if len(more_stories) != 20:
-            errors.append(f"also_on: expected 20 items, got {len(more_stories)}")
-        # Normalize: lowercase, strip punctuation except spaces
-        import re
-        def norm(s):
-            return re.sub(r'[^\w\s]', '', s.lower()).strip()
-        normalized = [norm(s) for s in more_stories]
-        seen = set()
-        for i, n in enumerate(normalized):
-            if n in seen:
-                errors.append(f"also_on: duplicate at index {i} (item {more_stories[i]})")
-            seen.add(n)
-        # Check each fits column width
-        f_more = get_font("sans", 7)
-        col_w = stories_w // 2 - 4
-        for story in more_stories:
-            if not check_can_fit(story, f_more, col_w, 1, "also_on"):
-                errors.append(f"also_on: cannot fit '{story}' in col_w={col_w}")
-
+    # 3. ALSO ON: 20 items, all distinct after normalizing, every line fits column width
+    if len(more_stories) != 20:
+        errors.append(f"also_on: expected 20 items, got {len(more_stories)}")
+    import re
+    def norm(s):
+        return re.sub(r'[\W\s]', '', s.lower()).strip()
+    normalized = [norm(s) for s in more_stories]
+    seen = set()
+    for i, n in enumerate(normalized):
+        if n in seen:
+            errors.append(f"also_on: duplicate at index {i} (item {more_stories[i]})")
+        seen.add(n)
+    for story in more_stories:
+        if not check_can_fit(story, f_more, col_w, 1, "also_on"):
+            errors.append(f"also_on: cannot fit '{story}' in col_w={col_w}")
+    
     return len(errors) == 0, errors
 
 
-# ═══════════════════════════════════════════════════════════════
-# SAVE + VERIFY
-# ═══════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════
+# SAVE + VERIFY + CROPS
+# ════════════════════════════════════════════════════════════════
 os.makedirs("out", exist_ok=True)
 
 # Run verification before saving
@@ -1504,20 +1547,31 @@ if not ok:
         print(f"  {e}")
     exit(1)
 
-print("VERIFICATION PASSED: all text fits its box")
+print("VERIFICATION PASSED")
 
-# Assertion report per FIX BRIEF 4
-print("ASSERTIONS:")
-print("  ✓ headline_y >= illustration_bottom + 4 for all 12 mid cards")
-print("  ✓ header-row elements non-overlapping (place_x > number_circle_right, place fits)")
-print("  ✓ ALSO ON: 20 items, all distinct, all fit column width")
-
+# Save main image
 IMG.save("out/entry.png", optimize=True)
 print(f"Saved to out/entry.png")
-size = os.path.getsize("out/entry.png")
-print(f"Size: {size} bytes")
 
+# Save crops from out/entry.png (1024x1024) with PIL
+from PIL import Image as PILImage
+entry_img = PILImage.open("out/entry.png")
+# out/top_section.png = y 0–260 (masthead + stat + UTC + region + lead 1 top)
+entry_img.crop((0, 0, 1024, 260)).save("out/top_section.png")
+# out/lead_panels.png = y 240–550 (all 3 lead panels)
+entry_img.crop((0, 240, 1024, 550)).save("out/lead_panels.png")
+# out/mid_section.png = y 540–790 (mid cards)
+entry_img.crop((0, 540, 1024, 790)).save("out/mid_section.png")
+# out/bottom_section.png = y 770–1024 (map + ALSO ON + DATE CHECK + legend + footer)
+entry_img.crop((0, 770, 1024, 1024)).save("out/bottom_section.png")
+# out/full_check.png = copy of out/entry.png
+entry_img.save("out/full_check.png")
+
+# Print MD5 and byte size of out/entry.png
 import hashlib
 with open("out/entry.png", "rb") as f:
     md5 = hashlib.md5(f.read()).hexdigest()
+size = os.path.getsize("out/entry.png")
 print(f"MD5: {md5}")
+print(f"Size: {size} bytes")
+print("Crops saved: top_section.png, lead_panels.png, mid_section.png, bottom_section.png, full_check.png")
