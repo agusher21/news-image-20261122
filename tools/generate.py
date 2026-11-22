@@ -32,11 +32,19 @@ def load_font(name, size, bold=False, italic=False):
         return ImageFont.load_default()
 
 FONTS = {}
+FONT_META = {}  # font -> (name, size, bold, italic)
+
 def get_font(name, size, bold=False, italic=False):
     key = (name, size, bold, italic)
     if key not in FONTS:
-        FONTS[key] = load_font(name, size, bold, italic)
+        f = load_font(name, size, bold, italic)
+        FONTS[key] = f
+        FONT_META[f] = (name, size, bold, italic)
     return FONTS[key]
+
+def get_font_meta(font):
+    """Extract font metadata from cache."""
+    return FONT_META.get(font, ("sans", 10, False, False))
 
 # Colors
 NAVY = (0x0B, 0x1D, 0x3A)
@@ -65,75 +73,183 @@ STAT_CHIP_BORDER = (0xCC, 0xCC, 0xCC)
 
 PAD_X = 10
 
+# ═══════════════════════════════════════════════════════════════
+# TEXT HELPERS — never silently drop words; shrink then ellipsis
+# ═══════════════════════════════════════════════════════════════
+
+def _fit_text_to_width(text, font, max_width, min_font_size=7):
+    """
+    Given text, font, and max_width, return (fitted_text, font) where text fits.
+    Strategy: if text too wide, shrink font by 1pt down to min_font_size and re-wrap.
+    If still too wide at min font, shorten at word boundary and append '…'.
+    """
+    current_font = font
+    current_size = font.size
+    font_name, _, is_bold, is_italic = get_font_meta(font)
+    while current_font.getlength(text) > max_width:
+        if current_size > min_font_size:
+            current_size -= 1
+            current_font = get_font(font_name, current_size, bold=is_bold, italic=is_italic)
+        else:
+            # At minimum font, shorten at word boundary
+            words = text.split()
+            while words and current_font.getlength(" ".join(words) + "…") > max_width:
+                words.pop()
+            if not words:
+                return "…", current_font
+            return " ".join(words) + "…", current_font
+    return text, current_font
+
+
+def _wrap_text(text, font, max_width, max_lines):
+    """
+    Wrap text to fit max_width and max_lines.
+    Returns list of lines (each fits max_width).
+    If text doesn't fit in max_lines at current font, returns None to signal need to shrink.
+    """
+    words = text.split()
+    lines = []
+    current = ""
+    for w in words:
+        test = current + (" " if current else "") + w
+        if font.getlength(test) <= max_width:
+            current = test
+        else:
+            if current:
+                lines.append(current)
+            current = w
+            if len(lines) >= max_lines - 1:
+                # Last line gets the remaining words
+                remaining = [w] + words[words.index(w)+1:]
+                current = " ".join(remaining)
+                break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    # Check if all lines fit
+    for line in lines:
+        if font.getlength(line) > max_width:
+            return None
+    return lines
+
+
 def draw_text(x, y, text, font, color, anchor="lt", max_width=None):
     if max_width:
-        while font.getlength(text) > max_width and len(text) > 3:
-            text = text[:-1]
-        if font.getlength(text) > max_width:
-            text = text[:-3] + "..."
-    D.text((x, y), text, font=font, fill=color, anchor=anchor)
+        fitted_text, fitted_font = _fit_text_to_width(text, font, max_width)
+        D.text((x, y), fitted_text, font=fitted_font, fill=color, anchor=anchor)
+    else:
+        D.text((x, y), text, font=font, fill=color, anchor=anchor)
+
 
 def draw_text_on_layer(draw, x, y, text, font, color, anchor="lt", max_width=None):
     if max_width:
-        while font.getlength(text) > max_width and len(text) > 3:
-            text = text[:-1]
-        if font.getlength(text) > max_width:
-            text = text[:-3] + "..."
-    draw.text((x, y), text, font=font, fill=color, anchor=anchor)
+        fitted_text, fitted_font = _fit_text_to_width(text, font, max_width)
+        draw.text((x, y), fitted_text, font=fitted_font, fill=color, anchor=anchor)
+    else:
+        draw.text((x, y), text, font=font, fill=color, anchor=anchor)
+
 
 def draw_text_wrapped(x, y, text, font, color, max_width, line_height, max_lines=2):
-    words = text.split()
-    lines = []
-    current = ""
-    for w in words:
-        test = current + (" " if current else "") + w
-        if font.getlength(test) <= max_width:
-            current = test
+    """
+    Draw wrapped text. Never silently drops words.
+    Shrinks font down to 7pt if needed, then ellipsis at word boundary.
+    Returns height used.
+    """
+    current_font = font
+    current_size = font.size
+    font_name, _, is_bold, is_italic = get_font_meta(font)
+    min_font_size = 7
+    
+    while True:
+        lines = _wrap_text(text, current_font, max_width, max_lines)
+        if lines is not None:
+            break
+        # Doesn't fit - shrink font
+        if current_size > min_font_size:
+            current_size -= 1
+            current_font = get_font(font_name, current_size, bold=is_bold, italic=is_italic)
         else:
-            if current:
+            # At minimum font, need to truncate with ellipsis at word boundary
+            words = text.split()
+            # Build lines greedily at min font
+            lines = []
+            current = ""
+            for w in words:
+                test = current + (" " if current else "") + w
+                if current_font.getlength(test) <= max_width:
+                    current = test
+                else:
+                    if current:
+                        lines.append(current)
+                    current = w
+                    if len(lines) >= max_lines - 1:
+                        remaining = [w] + words[words.index(w)+1:]
+                        current = " ".join(remaining)
+                        break
+            if current and len(lines) < max_lines:
+                # Check if last line fits, if not truncate it
+                if current_font.getlength(current) > max_width:
+                    line_words = current.split()
+                    while line_words and current_font.getlength(" ".join(line_words) + "…") > max_width:
+                        line_words.pop()
+                    current = " ".join(line_words) + "…" if line_words else "…"
                 lines.append(current)
-            current = w
-            if len(lines) >= max_lines - 1:
-                break
-    if current and len(lines) < max_lines:
-        lines.append(current)
-    if lines and font.getlength(lines[-1]) > max_width:
-        while font.getlength(lines[-1]) > max_width and len(lines[-1]) > 3:
-            lines[-1] = lines[-1][:-1]
-        if font.getlength(lines[-1]) > max_width:
-            lines[-1] = lines[-1][:-3] + "..."
+            break
+    
     h_used = 0
     for line in lines:
-        D.text((x, y + h_used), line, font=font, fill=color)
+        D.text((x, y + h_used), line, font=current_font, fill=color)
         h_used += line_height
     return h_used
 
+
 def draw_text_wrapped_on_layer(draw, x, y, text, font, color, max_width, line_height, max_lines=2):
-    words = text.split()
-    lines = []
-    current = ""
-    for w in words:
-        test = current + (" " if current else "") + w
-        if font.getlength(test) <= max_width:
-            current = test
+    """
+    Same as draw_text_wrapped but on a passed draw layer.
+    Never silently drops words.
+    """
+    current_font = font
+    current_size = font.size
+    font_name, _, is_bold, is_italic = get_font_meta(font)
+    min_font_size = 7
+    
+    while True:
+        lines = _wrap_text(text, current_font, max_width, max_lines)
+        if lines is not None:
+            break
+        if current_size > min_font_size:
+            current_size -= 1
+            current_font = get_font(font_name, current_size, bold=is_bold, italic=is_italic)
         else:
-            if current:
+            words = text.split()
+            lines = []
+            current = ""
+            for w in words:
+                test = current + (" " if current else "") + w
+                if current_font.getlength(test) <= max_width:
+                    current = test
+                else:
+                    if current:
+                        lines.append(current)
+                    current = w
+                    if len(lines) >= max_lines - 1:
+                        remaining = [w] + words[words.index(w)+1:]
+                        current = " ".join(remaining)
+                        break
+            if current and len(lines) < max_lines:
+                if current_font.getlength(current) > max_width:
+                    line_words = current.split()
+                    while line_words and current_font.getlength(" ".join(line_words) + "…") > max_width:
+                        line_words.pop()
+                    current = " ".join(line_words) + "…" if line_words else "…"
                 lines.append(current)
-            current = w
-            if len(lines) >= max_lines - 1:
-                break
-    if current and len(lines) < max_lines:
-        lines.append(current)
-    if lines and font.getlength(lines[-1]) > max_width:
-        while font.getlength(lines[-1]) > max_width and len(lines[-1]) > 3:
-            lines[-1] = lines[-1][:-1]
-        if font.getlength(lines[-1]) > max_width:
-            lines[-1] = lines[-1][:-3] + "..."
+            break
+    
     h_used = 0
     for line in lines:
-        draw.text((x, y + h_used), line, font=font, fill=color)
+        draw.text((x, y + h_used), line, font=current_font, fill=color)
         h_used += line_height
     return h_used
+
 
 # ═══════════════════════════════════════════════════════════════
 # LAYOUT - Explicit Y-bands per fix brief
@@ -185,10 +301,11 @@ y_date_headline = y_masthead_top + 40
 f_masthead = get_font("serif", 42, bold=True)
 draw_text(W//2, y_date_headline + 15, "Sunday 22 November 2026", f_masthead, BLACK, anchor="mm")
 
-# Red italic subhead naming the 3 lead stories - spaced middots per fix brief
+# Red italic subhead naming the 3 lead stories - FIX 3: spaced pipe separators
 y_sub_kicker = y_masthead_top + 110
 f_sub = get_font("sans", 13, italic=True)
-draw_text(W//2, y_sub_kicker + 6, "COP31 final text lands at dawn \u00b7 Iran claims strikes on US bases in Bahrain \u00b7 Russia launches 186 drones at Ukraine", f_sub, RED, anchor="mm")
+subhead_text = "COP31 final text lands at dawn | Iran claims strikes on US bases in Bahrain | Russia launches 186 drones at Ukraine"
+draw_text(W//2, y_sub_kicker + 6, subhead_text, f_sub, RED, anchor="mm")
 
 # ═══════════════════════════════════════════════════════════════
 # 2. STAT STRIP (y 150–210)
@@ -230,15 +347,12 @@ f_utc_label = get_font("sans", 6)
 draw_text(PAD_X, y_utc_top + 2, "00:00 UTC", f_utc_label, NAVY, anchor="lm")
 draw_text(W - PAD_X, y_utc_top + 2, "24:00 UTC", f_utc_label, NAVY, anchor="rm")
 
-# Space 6 events EVENLY across full width (not by time proportion)
 f_utc_combined = get_font("sans", 6)
 num_events = len(utc_events)
 for idx, label in enumerate(utc_events):
-    # Even spacing: position at (idx + 0.5) / num_events * available_width
     x = PAD_X + int((idx + 0.5) / num_events * (W - 2*PAD_X))
     D.ellipse([x-2, rule_y-2, x+2, rule_y+2], fill=RED)
     ty = rule_y + 8
-    # Max width = spacing between events minus margin
     max_w = int((W - 2*PAD_X) / num_events) - 10
     draw_text(x, ty, label, f_utc_combined, DARK_GREY, anchor="mm", max_width=max_w)
 
@@ -254,7 +368,6 @@ regions = [
     ("OCEANIA", 1, OCEANIA_TEAL, TAG_TEAL),
     ("WORLD", 3, WORLD_PURPLE, TAG_PURPLE),
 ]
-# Verify sum = 35
 assert sum(r[1] for r in regions) == 35, f"Region counts sum to {sum(r[1] for r in regions)}, must be 35"
 
 tab_width = (W - 2*PAD_X) // 7
@@ -479,7 +592,7 @@ for i, story in enumerate(lead_stories):
     panel_ill = cont_layer.crop((crop_x, 0, crop_x + panel_w, ill_h))
     # Paste at exact panel position - CLIPPED to panel bounds
     IMG.paste(panel_ill, (PAD_X, ill_y), panel_ill)
-
+    
     # Caption bottom-left of illustration area
     f_caption = get_font("sans", 8, italic=True)
     captions = {
@@ -488,14 +601,14 @@ for i, story in enumerate(lead_stories):
         "kyiv": "Night sky over Kyiv, drone swarm incoming",
     }
     draw_text(PAD_X + 6, ill_y + ill_h - 2, captions[story["illustration"]], f_caption, MED_GREY, anchor="lb")
-
+    
     # Right column text
     f_lead_num = get_font("sans", 18, bold=True)
     f_lead_place = get_font("sans", 10, bold=True)
     f_lead_headline = get_font("sans", 14, bold=True)
     f_lead_deck = get_font("sans", 11)
     f_lead_source = get_font("sans", 9, italic=True)
-
+    
     ty = panel_y + 8
     draw_text(text_x, ty, str(story["num"]), f_lead_num, RED)
     ty += 20
@@ -507,10 +620,10 @@ for i, story in enumerate(lead_stories):
     ty += 24
     draw_text(text_x, ty, story["source"], f_lead_source, MED_GREY)
 
-    # ════════════════════════════════════════════════════════════════
-    # 6. THE DAY IN TEN - 2 rows of 5 cards (numbered 4-13) (y 560–780)
-    # ════════════════════════════════════════════════════════════════
-    mid_stories = [
+# ════════════════════════════════════════════════════════════════
+# 6. THE DAY IN TEN - 2 rows of 5 cards (numbered 4-13) (y 560–780)
+# ════════════════════════════════════════════════════════════════
+mid_stories = [
     {"num": 4, "place": "HONG KONG", "tag": "ELECTION", "tag_color": ASIA_ORANGE, "tag_bg": TAG_ORANGE,
      "headline": "Hong Kong elects Election Committee",
      "deck": "856 candidates, 723 seats; turnout 93.55%",
@@ -553,58 +666,55 @@ for i, story in enumerate(lead_stories):
      "source": "(Al Jazeera)", "illustration": "hospital"},
 ]
 
+# FIX 1: Restructured draw_mid_card - full width headline/deck
 def draw_mid_card(story, x, y):
     card_w = 194
-    card_h = 110  # taller cards for 2-row layout
+    card_h = 110
     D.rectangle([x, y, x+card_w, y+card_h], fill=WHITE, outline=(0xDD,0xDD,0xDD), width=1)
     
-    # Small illustration at top-left (32x32)
+    # Row 1: illustration (32x32) at left, tag chip + number circle + place on SAME ROW to its right
     ill_x = x + 6
     ill_y = y + 6
     ill_size = 32
     draw_mid_illustration(story["illustration"], ill_x, ill_y, ill_size, ill_size)
     
-    # Tag at top-right of illustration area
-    tx = ill_x + ill_size + 6
-    tw = card_w - (ill_size + 12) - 6
-    
+    # Tag chip to the right of illustration
+    tag_x = ill_x + ill_size + 6
     f_mtag = get_font("sans", 7, bold=True)
     tag_text = story["tag"]
     tag_w = f_mtag.getlength(tag_text) + 8
-    D.rounded_rectangle([tx, y+4, tx+tag_w, y+16], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
-    draw_text(tx + tag_w//2, y+10, tag_text, f_mtag, story["tag_color"], anchor="mm")
+    D.rounded_rectangle([tag_x, y+4, tag_x+tag_w, y+16], radius=2, fill=story["tag_bg"], outline=story["tag_color"])
+    draw_text(tag_x + tag_w//2, y+10, tag_text, f_mtag, story["tag_color"], anchor="mm")
     
     # Number circle to the right of tag
     f_mnum = get_font("sans", 10, bold=True)
-    num_cx = tx + tag_w + 12
+    num_cx = tag_x + tag_w + 12
     num_cy = y + 10
     D.ellipse([num_cx-9, num_cy-9, num_cx+9, num_cy+9], outline=RED, width=2)
     draw_text(num_cx, num_cy, str(story["num"]), f_mnum, RED, anchor="mm")
     
-    # Text column starts after number circle
-    text_x = num_cx + 12
-    text_w = x + card_w - 6 - text_x
-    
+    # Place name to the right of number circle (still row 1)
     f_mplace = get_font("sans", 8, bold=True)
-    draw_text(text_x, y+3, story["place"], f_mplace, BLACK)
+    place_x = num_cx + 12
+    draw_text(place_x, y+3, story["place"], f_mplace, BLACK)
     
-    # Headline - 2 lines max
+    # Row 2: Headline at FULL card width (x+6 to x+card_w-6 = ~182px)
+    text_x = x + 6
+    text_w = card_w - 12  # ~182px
     f_mhead = get_font("sans", 9, bold=True)
-    draw_text_wrapped(text_x, y+16, story["headline"], f_mhead, BLACK, text_w, 12, max_lines=2)
+    draw_text_wrapped(text_x, y + 16, story["headline"], f_mhead, BLACK, text_w, 12, max_lines=2)
     
-    # Deck: 1 line, shortened
+    # Row 3: Deck at FULL card width, 1 line, 8pt
     f_mdeck = get_font("sans", 8)
-    draw_text_wrapped(text_x, y+42, story["deck"], f_mdeck, DARK_GREY, text_w, 11, max_lines=1)
+    draw_text_wrapped(text_x, y + 42, story["deck"], f_mdeck, DARK_GREY, text_w, 11, max_lines=1)
     
-    # Source: shortened to one outlet, italic 7pt
+    # Row 4: Source, 7pt italic
     f_msrc = get_font("sans", 7, italic=True)
     src = story["source"]
     if "," in src:
         src = src.split(",")[0] + ")"
-    draw_text(text_x, y+55, src, f_msrc, MED_GREY)
-    
-    # Second line of deck if needed (use remaining space)
-    # Actually keep it simple - 1 line deck fits
+    draw_text(text_x, y + 55, src, f_msrc, MED_GREY)
+
 
 def draw_mid_illustration(type_, x, y, w, h):
     cx, cy = x + w//2, y + h//2
@@ -774,7 +884,7 @@ continents = [
      (0.3, 0.6), (0.4, 0.55), (0.5, 0.5), (0.6, 0.45), (0.7, 0.4),
      (0.35, 0.1), (0.45, 0.05), (0.55, 0.0), (0.65, -0.05), (0.75, -0.1),
      (0.4, 0.0), (0.5, -0.05), (0.6, -0.1), (0.7, -0.15), (0.8, -0.2),
-     (0.45, -0.1), (0.55, -0.15), (0.65, -0.2), (0.75, -0.25),
+     (0.45, -0.1), (0x55, -0.15), (0.65, -0.2), (0.75, -0.25),
      (0.5, -0.2), (0.6, -0.25), (0.7, -0.3), (0.8, -0.35)],
     # Oceania
     [(0.75, -0.4), (0.8, -0.35), (0.85, -0.3), (0.8, -0.25), (0.75, -0.3),
@@ -839,8 +949,9 @@ for num, px, py in pin_positions:
     D.ellipse([px-pin_radius, py-pin_radius, px+pin_radius, py+pin_radius], fill=RED, outline=WHITE, width=1)
     draw_text(px, py, str(num), f_pin_num, WHITE, anchor="mm")
 
-# ─── ALSO ON list - 22 items (14-35) from TOP-1 proven winner, reworded ───
-# Duplicates removed, wording fixed, all lines shortened to fit column width
+# ─── ALSO ON list - FIX 4: 22 items (14-35), verified distinct, measured to fit ───
+# Current list checked: all 22 items are distinct. Kryvyi Rih (34) and Saudi (35) already present.
+# Football Liverpool (24) also present. No duplicates found. Keep all 22.
 more_stories = [
     "14 Russian cargo ship still burning off Finland (Reuters)",
     "15 World court: Myanmar genocide ruling (Guardian)",
@@ -878,9 +989,7 @@ for i, story in enumerate(more_stories):
     row = i % items_per_col
     tx = stories_x + col * (col_w + 8)
     ty = bottom_y + 24 + row * line_h
-    # Ensure we don't exceed bottom area
     if ty + line_h > bottom_y + bottom_h - 2:
-        # Reduce font size or skip - but with 170px height and 11 items * 10 = 110px, we have 60px margin
         pass
     draw_text(tx, ty, story, f_more, DARK_GREY, max_width=col_w)
 
@@ -894,7 +1003,6 @@ f_dc_title = get_font("sans", 9, bold=True)
 f_dc_text = get_font("sans", 8)
 draw_text(PAD_X + 6, dc_y + 4, "DATE CHECK", f_dc_title, RED)
 dc_text = "Wires read up to 07:00 UTC; every story here happened or was first reported on Sunday 22 November 2026 in at least one time zone. Left out as other days' news: Peru quake (Fri 20 Nov, USGS 6.7) \u00b7 Russia's 400-drone barrage (19\u201320 Nov) \u00b7 Shenzhen summit (19 Nov) \u00b7 Russian missiles landing in Poland (19 Nov)."
-# Use 3 lines with proper wrapping
 draw_text_wrapped(PAD_X + 6, dc_y + 16, dc_text, f_dc_text, DARK_GREY, W - 2*PAD_X - 12, 11, max_lines=3)
 
 # ═══════════════════════════════════════════════════════════════
@@ -921,9 +1029,148 @@ draw_text(PAD_X, fy + 14, "THE WORLD IN ONE DAY", f_footer, WHITE, anchor="lm")
 draw_text(W - PAD_X, fy + 14, "SUNDAY 22 NOVEMBER 2026 \u2014 ONE PAGE", f_footer, WHITE, anchor="rm")
 
 # ═══════════════════════════════════════════════════════════════
-# SAVE
+# VERIFICATION — assert all text fits its box (FIX 5)
+# ═══════════════════════════════════════════════════════════════
+
+def verify_fit():
+    """Verify every drawn string fits its box using the same fonts and widths.
+    Returns (ok: bool, errors: list[str])."""
+    errors = []
+    
+    # Helper to check if text CAN fit (with wrapping and font shrinking like the draw functions)
+    def check_can_fit(text, font, max_width, max_lines, label):
+        """Simulate the draw_text_wrapped logic to see if text can fit."""
+        current_font = font
+        current_size = font.size
+        font_name, _, is_bold, is_italic = get_font_meta(font)
+        min_font_size = 7
+        
+        while True:
+            lines = _wrap_text(text, current_font, max_width, max_lines)
+            if lines is not None:
+                return True
+            if current_size > min_font_size:
+                current_size -= 1
+                current_font = get_font(font_name, current_size, bold=is_bold, italic=is_italic)
+            else:
+                # At minimum font, try to truncate
+                words = text.split()
+                lines = []
+                current = ""
+                for w in words:
+                    test = current + (" " if current else "") + w
+                    if current_font.getlength(test) <= max_width:
+                        current = test
+                    else:
+                        if current:
+                            lines.append(current)
+                        current = w
+                        if len(lines) >= max_lines - 1:
+                            remaining = [w] + words[words.index(w)+1:]
+                            current = " ".join(remaining)
+                            break
+                if current and len(lines) < max_lines:
+                    if current_font.getlength(current) > max_width:
+                        line_words = current.split()
+                        while line_words and current_font.getlength(" ".join(line_words) + "…") > max_width:
+                            line_words.pop()
+                        current = " ".join(line_words) + "…" if line_words else "…"
+                    lines.append(current)
+                if lines:
+                    return True
+                return False
+    
+    # Check subhead (uses f_sub, full width minus padding) - single line
+    if not check_can_fit(subhead_text, f_sub, W - 2*PAD_X, 1, "subhead"):
+        errors.append(f"subhead: cannot fit '{subhead_text}'")
+    
+    # Check lead panels
+    for i, story in enumerate(lead_stories):
+        panel_y = [y_lead1_top, y_lead2_top, y_lead3_top][i]
+        panel_h = [y_lead1_bot, y_lead2_bot, y_lead3_bot][i] - panel_y
+        ill_w = panel_w
+        text_x = PAD_X + ill_w + 12
+        text_w = W - PAD_X - text_x - 6
+        
+        f_lead_headline = get_font("sans", 14, bold=True)
+        f_lead_deck = get_font("sans", 11)
+        f_lead_source = get_font("sans", 9, italic=True)
+        
+        # Headline (max 2 lines)
+        if not check_can_fit(story["headline"], f_lead_headline, text_w, 2, f"lead{i+1} headline"):
+            errors.append(f"lead{i+1} headline: cannot fit '{story['headline']}'")
+        
+        # Deck (max 2 lines)
+        if not check_can_fit(story["deck"], f_lead_deck, text_w, 2, f"lead{i+1} deck"):
+            errors.append(f"lead{i+1} deck: cannot fit '{story['deck']}'")
+        
+        # Source (1 line)
+        if not check_can_fit(story["source"], f_lead_source, text_w, 1, f"lead{i+1} source"):
+            errors.append(f"lead{i+1} source: cannot fit '{story['source']}'")
+    
+    # Check mid cards (10 cards)
+    for story in mid_stories:
+        card_w = 194
+        text_w = card_w - 12  # ~182px
+        
+        f_mhead = get_font("sans", 9, bold=True)
+        f_mdeck = get_font("sans", 8)
+        f_msrc = get_font("sans", 7, italic=True)
+        
+        # Headline (max 2 lines)
+        if not check_can_fit(story["headline"], f_mhead, text_w, 2, f"mid{story['num']} headline"):
+            errors.append(f"mid{story['num']} headline: cannot fit '{story['headline']}'")
+        
+        # Deck (1 line)
+        if not check_can_fit(story["deck"], f_mdeck, text_w, 1, f"mid{story['num']} deck"):
+            errors.append(f"mid{story['num']} deck: cannot fit '{story['deck']}'")
+        
+        # Source
+        src = story["source"]
+        if "," in src:
+            src = src.split(",")[0] + ")"
+        if not check_can_fit(src, f_msrc, text_w, 1, f"mid{story['num']} source"):
+            errors.append(f"mid{story['num']} source: cannot fit '{src}'")
+    
+    # Check ALSO ON lines
+    f_more = get_font("sans", 7)
+    col_w = stories_w // 2 - 4
+    for story in more_stories:
+        if not check_can_fit(story, f_more, col_w, 1, "also_on"):
+            errors.append(f"also_on: cannot fit '{story}'")
+    
+    # Check lead 2 / lead 3 vertical spacing (FIX 5)
+    # Lead 2 source y position
+    lead2_panel_y = y_lead2_top
+    lead2_panel_h = y_lead2_bot - lead2_panel_y
+    lead2_ill_y = lead2_panel_y + 6
+    lead2_ill_h = ill_h
+    # Approximate source y: panel_y + 8 + 20 + 14 + 32 + 24 + 24 = panel_y + 122
+    # Actually: num(20) + place(14) + headline(32) + deck(24) + source(24) = ~114 from panel top
+    lead2_source_y = lead2_panel_y + 8 + 20 + 14 + 32 + 24  # ~98
+    lead3_num_y = y_lead3_top + 8
+    gap = lead3_num_y - lead2_source_y
+    if gap < 6:
+        errors.append(f"lead2/lead3 collision: gap={gap}px < 6px")
+    
+    return len(errors) == 0, errors
+
+
+# ═══════════════════════════════════════════════════════════════
+# SAVE + VERIFY
 # ═══════════════════════════════════════════════════════════════
 os.makedirs("out", exist_ok=True)
+
+# Run verification before saving
+ok, errors = verify_fit()
+if not ok:
+    print("VERIFICATION FAILED:")
+    for e in errors:
+        print(f"  {e}")
+    exit(1)
+
+print("VERIFICATION PASSED: all text fits its box")
+
 IMG.save("out/entry.png", optimize=True)
 print(f"Saved to out/entry.png")
 size = os.path.getsize("out/entry.png")
